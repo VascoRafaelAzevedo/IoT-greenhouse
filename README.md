@@ -1,4 +1,4 @@
-# 🌱 Green Away IoT System
+# 🌱 GardenAway IoT System
 
 Welcome to the **Garden Away IoT System**! This repository contains the software for the IoT system designed for **real-time greenhouse monitoring and automation**. The focus is on embedded systems and IoT, but it also covers backend, API, database, and some microservices architecture.
 

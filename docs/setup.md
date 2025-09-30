@@ -1,6 +1,6 @@
 # ⚡ Setup & Installation
 
-This README is a walk-through for setting up the **Green Away IoT System** locally or on a server using Docker and Docker Compose. It assumes a Linux environment (Ubuntu is recommended) but can be adapted for use on macOS.
+This README is a walk-through for setting up the **Garden Away IoT System** locally or on a server using Docker and Docker Compose. It assumes a Linux environment (Ubuntu is recommended) but can be adapted for use on macOS.
 
 ---
 

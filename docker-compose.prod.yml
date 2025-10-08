@@ -1,0 +1,23 @@
+version: '3.8'
+# Production overrides: stricter restart, resource limits, no source mounting
+services:
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+    environment:
+      ENVIRONMENT: production
+  consumer:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+  frontend:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M

@@ -76,7 +76,6 @@ Cargo.lock
 .env
 *.env
 *.envrc
-*.dockerignore
 
 # IDEs / editors
 .vscode/

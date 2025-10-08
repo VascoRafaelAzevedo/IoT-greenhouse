@@ -1,0 +1,17 @@
+version: '3.8'
+# Dev overrides: mount source, enable live reload, lower restart aggressiveness
+services:
+  api:
+    volumes:
+      - ./api:/app
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+  consumer:
+    volumes:
+      - ./consumer:/app
+    environment:
+      RUST_LOG: debug
+  frontend:
+    volumes:
+      - ./frontend:/app

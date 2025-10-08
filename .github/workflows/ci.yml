@@ -94,7 +94,7 @@ jobs:
 
           echo "Verifying telemetry hypertable..."
           docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
-            "SELECT table_name FROM timescaledb_information.hypertables WHERE table_name='telemetry'" | grep -q telemetry \
+            "SELECT hypertable_name FROM timescaledb_information.hypertables WHERE hypertable_schema='public' AND hypertable_name='telemetry'" | grep -q telemetry \
             || { echo 'telemetry is not a hypertable'; exit 1; }
 
           echo "Checking insert blocker trigger presence (optional)..."

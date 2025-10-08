@@ -1,6 +1,6 @@
 # 🌱 GardenAway IoT System
 
-![CI](https://github.com/voidvasco/IoT-greenhouse/actions/workflows/ci.yml/badge.svg?branch=main)
+![CI](https://github.com/VascoRafaelAzevedo/IoT-greenhouse/actions/workflows/ci.yml/badge.svg?branch=main)
 
 Welcome to the **Garden Away IoT System**! This repository contains the software for the IoT system designed for **real-time greenhouse monitoring and automation**. The focus is on embedded systems and IoT, but it also covers backend, API, database, and some microservices architecture.
 

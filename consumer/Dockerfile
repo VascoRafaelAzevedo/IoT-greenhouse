@@ -11,7 +11,7 @@ RUN if [ ! -f Cargo.toml ]; then \
       mkdir -p src && \
       echo "#[tokio::main]\nasync fn main(){ println!(\"Consumer placeholder - implement logic\"); }" > src/main.rs; \
     fi; \
-    cargo build --release || true
+    cargo build --release
 
 FROM debian:stable-slim AS runtime
 WORKDIR /app

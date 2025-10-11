@@ -1,5 +1,8 @@
 #[tokio::main]
 async fn main() {
-    println!("Consumer starting (placeholder)...");
-    // TODO: MQTT subscribe + DB insert
+    println!("Consumer running...");
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+    }
 }
+

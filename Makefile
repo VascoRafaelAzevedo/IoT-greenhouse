@@ -37,6 +37,21 @@ api-shell:
 psql:
 	docker exec -it gardenaway-postgres psql -U $$DB_USER -d $$DB_NAME
 
+.PHONY: psql-test
+psql-test:
+	docker exec -it gardenaway-postgres psql -U $$DB_USER -d $$DB_NAME_TEST
+
+.PHONY: db-status
+db-status:
+	@echo "=== Database Status ==="
+	@docker exec gardenaway-postgres psql -U postgres -c "\\l" | grep -E "greenhouse|Name" || true
+	@echo ""
+	@echo "=== Production Database (greenhouse) ==="
+	@docker exec gardenaway-postgres psql -U postgres -d greenhouse -c "SELECT 'app_user' as table, COUNT(*) FROM app_user UNION ALL SELECT 'greenhouse', COUNT(*) FROM greenhouse UNION ALL SELECT 'device', COUNT(*) FROM device UNION ALL SELECT 'telemetry', COUNT(*) FROM telemetry;"
+	@echo ""
+	@echo "=== Test Database (greenhouse_test) ==="
+	@docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c "SELECT 'app_user' as table, COUNT(*) FROM app_user UNION ALL SELECT 'greenhouse', COUNT(*) FROM greenhouse UNION ALL SELECT 'device', COUNT(*) FROM device UNION ALL SELECT 'telemetry', COUNT(*) FROM telemetry;"
+
 .PHONY: mqtt-sub
 mqtt-sub:
 	docker exec -it gardenaway-mosquitto mosquitto_sub -h localhost -t '#' -u $$MQTT_USER -P $$MQTT_PASSWORD -v

@@ -1,3 +1,11 @@
+-- =====================================================
+-- Seed Data for Production Database ONLY
+-- =====================================================
+-- This data will ONLY be inserted into 'greenhouse' database
+-- The 'greenhouse_test' database will remain empty
+-- =====================================================
+\c greenhouse
+
 INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 	 ('UTC-11',-11),
 	 ('UTC-10',-10),

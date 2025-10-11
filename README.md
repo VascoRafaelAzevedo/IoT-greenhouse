@@ -14,16 +14,14 @@ The project consists of several components, each running in its own container:
 - **MQTT Broker (Mosquitto)**: Handles message distribution between devices and the server.  
 - **PostgreSQL + TimescaleDB**: Stores all telemetry data, setpoints, and events.  
 - **MQTT Consumer**: Reads messages from MQTT and writes them into the database.  
-- **Worker**: Handles outgoing commands to devices and integration with WhatsApp Business API.  
 - **API (Flask)**: Exposes endpoints for frontend or external apps to read/write data.  
 - **Frontend**: Minimal UI for testing and visualization (not included in this README, see `/frontend`).  
 
 💡 **High-level flow of data**:  
 `ESP32 → MQTT Broker → Consumer → TimescaleDB → API → Frontend / Email / WhatsApp`  
-`Frontend → API → Worker → TimescaleDB & MQTT Broker → ESP32` 
+`Frontend → API → TimescaleDB & MQTT Broker → ESP32` 
 
-📌 **UML Diagram Placeholder:**  
-![UML Diagram Placeholder](./docs/uml_placeholder.svg)
+
 
 ---
 
@@ -31,9 +29,9 @@ The project consists of several components, each running in its own container:
 
 | Component       | Language/Tech             | Reasoning                                                       |
 |-----------------|---------------------------|-----------------------------------------------------------------|
-| Microcontroller | C                         | Native embedded support, efficient and low-level control        |
+| Microcontroller | C++ & PlatformIO                         | Industry standard, native embedded support, efficient and low-level control        |
 | API             | Python + Flask            | Lightweight, easy to start, suited for IoT integration          |
-| Consumer/Worker | Rust                      | Robust and very safe, fast, and compatible with microservices   |
+| Consumer | Rust                      | Robust and very safe, fast, and compatible with microservices   |
 | Database        | PostgreSQL + TimescaleDB  | Time-series support for telemetry, reliable and scalable        |
 | Broker          | Mosquitto                 | Open Source MQTT broker, lightweight, perfect to start with MQTT|
 | Docker          | Docker & Compose          | Only true option to containerization and n                      |
@@ -42,25 +40,41 @@ The project consists of several components, each running in its own container:
 
 ## 📝 Features
 
-- ✅ Real-time telemetry collection  
-- ✅ Time-series storage with compression of older data(TimescaleDB)  
-- ✅ Setpoint management and automated control  
-- ✅ Communication via MQTT  
-- ✅ WhatsApp notifications for critical/urgent information  
-- ✅ Microservice architecture: API, Consumer, Worker, DB, MQTT Broker  
+- ✅ **Real-time telemetry** collection  
+- ✅ **Setpoint management** and automated control  
+- ✅ Communication via **MQTT**  
+- ✅ **WhatsApp notifications** for critical/urgent information  
+- ✅ **Microservice architecture**: API, Consumer, Worker, DB, MQTT Broker  
+- ✅ **Dual database setup**: Testing DB with mock data + Production DB (clean)  
 
 ---
+
+## 🗄️ Database Setup
+
+The system uses **two PostgreSQL databases** in one container:
+
+| Database | Purpose | Contains Data? |
+|----------|---------|----------------|
+| `greenhouse_test` | Testing/Development | ✅ Yes (2 users, 4 devices, telemetry) |
+| `greenhouse` | Production/CI | ❌ No (empty tables) |
+
+**Quick commands:**
+```bash
+make db-status      # Check both databases
+make psql           # Connect to production DB
+make psql-test      # Connect to test DB
+```
+
 
 ## 📌 Next Steps / Sub-READMEs
 
 To understand each component in depth, check these guides:
 
 1. **[Setup & Installation](./docs/setup.md)** ⚡: Get the project running locally, initialize DB, MQTT, API, etc.  
-2. **[Database](./docs/database.md)** 🗄️: Tables, some mock data, and UML diagrams.  
-3. **[API & Flask](./docs/api.md)** 🔌: Endpoints, authentication, and integration with worker.  
-4. **[WhatsApp Business Integration](./docs/whatsapp.md)** 💬: How to send notifications.  
-5. **[Consumer & Worker](./docs/consumer_worker.md)** 🤖: How they operate, logs, and testing.  
-6. **[Security & Best Practices](./docs/security.md)** 🔒: MQTT authentication, secrets management, and DB security.  
+2. **[Database](./docs/database.md)** 🗄️: Tables, some mock data, and UML diagrams.   
+3. **[API & Flask](./docs/api.md)** 🔌: Endpoints, authentication, integration with consumer and frontend.  
+4. **[WhatsApp Business Integration](./docs/whatsapp.md)** 💬: Notification logic and Set Up.  
+5. **[Consumer](./docs/consumer_worker.md)** 🤖: How it operates and testing.  
 
 
 ---
@@ -78,7 +92,7 @@ This project is being developed in conjunction with **Oslo Metropolitan Universi
 
 The collaboration provides guidance, research insights, and support for the IoT and embedded systems aspects of the project, allowing us to align the prototype with academic and industry standards.  
 
-**Note:** This collaboration focuses on practical, hands-on experience with real-world IoT systems and their installation process, including MQTT-based telemetry, microcontroller programming, server-side data management, and electronics selection and research. For the final delivery, a real, full-scale, working prototype will be made.
+**Note:** This collaboration focuses on practical, hands-on experience with real-world IoT systems and their installation process, including MQTT-based telemetry, microcontroller programming, server-side data management, electronics selection, and research. For the final delivery, a real, full-scale, working prototype will be made.
 
 
 ## 📖 References

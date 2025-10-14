@@ -6,6 +6,7 @@
 -- =====================================================
 \c greenhouse
 
+-- Insert timezones
 INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 	 ('UTC-11',-11),
 	 ('UTC-10',-10),
@@ -34,53 +35,66 @@ INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 	 ('UTC+13',13),
 	 ('UTC+14',14);
 
+-- Insert users
 INSERT INTO public.app_user (id,google_sub,email,display_name,timezone_id,created_at,last_login_at,phone_country_code,phone_number,password_hash) VALUES
 	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','hashed_password_1'),
 	 ('0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,NULL,'maria@example.com','Maria Fernandes',2,'2025-09-21 17:47:50.488204+02',NULL,'+351','987654321','hashed_password_2');
 
-INSERT INTO public.greenhouse (id,owner_id,device_id,"name",last_seen,created_at) VALUES
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'device_1','Estufa Vasco 1',NULL,'2025-09-21 17:50:25.871142+02'),
-	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'device_2','Estufa Vasco 2',NULL,'2025-09-21 17:50:25.871142+02'),
-	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'device_3','Estufa Maria 1',NULL,'2025-09-21 17:50:25.871142+02'),
-	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'device_4','Estufa Maria 2',NULL,'2025-09-21 17:50:25.871142+02');
+-- Insert greenhouses
+INSERT INTO public.greenhouse (id,owner_id,"name",last_seen,created_at) VALUES
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Estufa Vasco 1','2025-10-14 10:30:00+02','2025-09-21 17:50:25.871142+02'),
+	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Estufa Vasco 2','2025-10-14 09:15:00+02','2025-09-21 17:50:25.871142+02'),
+	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'Estufa Maria 1','2025-10-14 11:00:00+02','2025-09-21 17:50:25.871142+02'),
+	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'Estufa Maria 2','2025-10-13 23:45:00+02','2025-09-21 17:50:25.871142+02');
 
-INSERT INTO public.device (device_id,greenhouse_id,fw_version,rssi,created_at) VALUES
-	 ('device_1','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'v1.0.0',-50,'2025-09-21 17:50:25.871142+02'),
-	 ('device_2','d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'v1.0.0',-48,'2025-09-21 17:50:25.871142+02'),
-	 ('device_3','89695209-7ced-4939-91ff-4d253761867d'::uuid,'v1.0.0',-52,'2025-09-21 17:50:25.871142+02'),
-	 ('device_4','4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'v1.0.0',-49,'2025-09-21 17:50:25.871142+02');
+-- Insert 15 plants
+INSERT INTO public.plants (plant_it,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_min,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
+	 ('a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6'::uuid,'Tomato','Classic red tomato variety for greenhouse cultivation',18.0,28.0,60.0,80.0,120,45,600.0),
+	 ('b2c3d4e5-f6a7-48b9-c0d1-e2f3a4b5c6d7'::uuid,'Lettuce','Green leafy lettuce, ideal for salads',15.0,22.0,50.0,70.0,180,30,400.0),
+	 ('c3d4e5f6-a7b8-49c0-d1e2-f3a4b5c6d7e8'::uuid,'Cucumber','Long green cucumber for fresh consumption',20.0,30.0,65.0,85.0,90,50,550.0),
+	 ('d4e5f6a7-b8c9-40d1-e2f3-a4b5c6d7e8f9'::uuid,'Basil','Aromatic herb for culinary use',20.0,27.0,55.0,75.0,150,35,500.0),
+	 ('e5f6a7b8-c9d0-41e2-f3a4-b5c6d7e8f9a0'::uuid,'Bell Pepper','Sweet red bell pepper variety',21.0,29.0,60.0,80.0,100,40,580.0),
+	 ('f6a7b8c9-d0e1-42f3-a4b5-c6d7e8f9a0b1'::uuid,'Strawberry','Sweet strawberry for fresh eating',18.0,25.0,65.0,80.0,140,40,450.0),
+	 ('a7b8c9d0-e1f2-43a4-b5c6-d7e8f9a0b1c2'::uuid,'Mint','Fresh mint herb for teas and garnish',15.0,24.0,60.0,75.0,160,35,400.0),
+	 ('b8c9d0e1-f2a3-44b5-c6d7-e8f9a0b1c2d3'::uuid,'Spinach','Nutrient-rich leafy green vegetable',15.0,21.0,50.0,70.0,170,30,380.0),
+	 ('c9d0e1f2-a3b4-45c6-d7e8-f9a0b1c2d3e4'::uuid,'Zucchini','Green summer squash for grilling',18.0,28.0,60.0,80.0,110,45,560.0),
+	 ('d0e1f2a3-b4c5-46d7-e8f9-a0b1c2d3e4f5'::uuid,'Parsley','Curly parsley herb for garnishing',16.0,24.0,55.0,75.0,155,35,420.0),
+	 ('e1f2a3b4-c5d6-47e8-f9a0-b1c2d3e4f5a6'::uuid,'Chili Pepper','Hot chili pepper for spicy dishes',22.0,30.0,55.0,75.0,95,40,600.0),
+	 ('f2a3b4c5-d6e7-48f9-a0b1-c2d3e4f5a6b7'::uuid,'Eggplant','Purple eggplant for Mediterranean dishes',22.0,30.0,65.0,80.0,105,45,570.0),
+	 ('a3b4c5d6-e7f8-49a0-b1c2-d3e4f5a6b7c8'::uuid,'Carrot','Orange root vegetable rich in vitamins',16.0,24.0,55.0,75.0,130,35,450.0),
+	 ('b4c5d6e7-f8a9-40b1-c2d3-e4f5a6b7c8d9'::uuid,'Radish','Crisp red radish for salads',15.0,22.0,50.0,70.0,145,30,400.0),
+	 ('c5d6e7f8-a9b0-41c2-d3e4-f5a6b7c8d9e0'::uuid,'Thyme','Aromatic Mediterranean herb',18.0,26.0,50.0,70.0,165,35,480.0);
 
+-- Insert setpoints (one per greenhouse)
+INSERT INTO public.setpoint (greenhouse_id,target_temp_min,target_temp_max,target_hum_air_min,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity,changed_at) VALUES
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,20.0,28.0,50.0,70.0,120,40,550.0,'2025-10-14 08:00:00+02'),
+	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,18.0,26.0,55.0,75.0,150,35,500.0,'2025-10-14 07:30:00+02'),
+	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,22.0,30.0,60.0,80.0,100,45,600.0,'2025-10-14 09:00:00+02'),
+	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,19.0,27.0,55.0,75.0,130,38,520.0,'2025-10-13 20:00:00+02');
 
-INSERT INTO public.setpoint (greenhouse_id,target_temp,target_hum_ar,target_hum_solo,irrigation_interval_minutes,irrigation_duration_seconds,target_light_hours,target_light_intensity,light_threshold,created_at,changed_by) VALUES
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,24.0,55.0,40.0,60,30,12.0,500.0,20.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,24.5,54.0,41.0,55,35,12.0,520.0,20.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,25.0,53.0,42.0,60,30,12.5,540.0,22.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,24.8,52.5,42.5,65,25,12.0,530.0,30.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,25.2,53.5,41.5,60,30,13.0,550.0,10.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,25.0,54.0,42.0,55,30,12.5,540.0,50.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,24.5,55.0,41.0,60,35,12.0,520.0,40.0,'2025-09-21 18:37:51.169685+02','e3279610-80a3-4d5d-a450-39b983d394b0'::uuid);
+-- Insert connection events
+INSERT INTO public.connection_event (greenhouse_id,start_ts,end_ts) VALUES
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-12 08:00:00+02','2025-10-12 12:30:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-12 12:30:00+02','2025-10-12 13:00:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-12 13:00:00+02','2025-10-12 18:45:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-13 09:15:00+02','2025-10-13 14:20:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-13 14:20:00+02','2025-10-13 14:45:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-13 14:45:00+02','2025-10-13 20:30:00+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'2025-10-14 07:50:00+02','2025-10-14 11:00:00+02'),
+	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'2025-10-13 10:00:00+02','2025-10-13 15:30:00+02'),
+	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,'2025-10-12 09:00:00+02','2025-10-12 17:00:00+02'),
+	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'2025-10-13 08:30:00+02','2025-10-13 23:45:00+02');
 
-INSERT INTO public.connection_event (greenhouse_id,event_type,start_ts,end_ts,created_at) VALUES
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-18 10:00:00+02','2025-09-18 14:30:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'offline','2025-09-18 14:30:00+02','2025-09-18 15:00:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-18 15:00:00+02','2025-09-18 20:45:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'offline','2025-09-18 20:45:00+02','2025-09-18 21:15:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-19 09:50:00+02','2025-09-19 13:20:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'offline','2025-09-19 13:20:00+02','2025-09-19 13:45:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-19 13:45:00+02','2025-09-19 19:30:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-20 10:10:00+02','2025-09-20 14:00:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'offline','2025-09-20 14:00:00+02','2025-09-20 14:30:00+02','2025-09-21 18:28:06.80226+02'),
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'online','2025-09-20 14:30:00+02','2025-09-20 20:00:00+02','2025-09-21 18:28:06.80226+02');
-
-INSERT INTO public.telemetry ("time",received_at,greenhouse_id,device_id,"sequence",temp_ar,hum_ar,hum_solo,lux,light_level_pct,light_power_w,nivel_agua_ok,pump_on,rssi,raw_payload) VALUES
-	 ('2025-09-21 17:53:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',1,22.5,55.0,40.0,300.0,75.0,20.0,true,false,-50,'{"mock": "data1"}'),
-	 ('2025-09-21 17:54:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',2,22.6,54.8,40.2,310.0,77.0,21.0,true,false,-50,'{"mock": "data2"}'),
-	 ('2025-09-21 17:55:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',3,22.7,54.5,40.5,320.0,78.0,22.0,true,false,-50,'{"mock": "data3"}'),
-	 ('2025-09-21 17:56:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',4,22.8,54.3,40.7,330.0,80.0,22.5,true,false,-50,'{"mock": "data4"}'),
-	 ('2025-09-21 17:57:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',5,22.9,54.0,41.0,340.0,82.0,23.0,true,false,-50,'{"mock": "data5"}'),
-	 ('2025-09-21 17:58:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',6,23.0,53.8,41.2,350.0,83.0,23.5,true,false,-50,'{"mock": "data6"}'),
-	 ('2025-09-21 17:59:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',7,23.1,53.5,41.5,360.0,85.0,24.0,true,false,-50,'{"mock": "data7"}'),
-	 ('2025-09-21 18:00:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',8,23.2,53.3,41.7,370.0,86.0,24.5,true,false,-50,'{"mock": "data8"}'),
-	 ('2025-09-21 18:01:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',9,23.3,53.0,42.0,380.0,88.0,25.0,true,false,-50,'{"mock": "data9"}'),
-	 ('2025-09-21 18:02:06.838632+02','2025-09-21 18:33:06.838632+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'device_1',10,23.4,52.8,42.2,390.0,90.0,25.5,true,false,-50,'{"mock": "data10"}');
+-- Insert telemetry data
+INSERT INTO public.telemetry ("time",greenhouse_id,"sequence",temp_air,hum_air,lux,light_intensity,light_on,water_level_ok,pump_on) VALUES
+	 ('2025-10-14 08:00:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,1,22.5,55.0,320.0,65.0,true,true,false),
+	 ('2025-10-14 08:05:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,2,22.7,54.8,335.0,68.0,true,true,false),
+	 ('2025-10-14 08:10:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,3,23.0,54.5,350.0,70.0,true,true,false),
+	 ('2025-10-14 08:15:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,4,23.2,54.2,365.0,72.0,true,true,false),
+	 ('2025-10-14 08:20:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,5,23.5,54.0,380.0,75.0,true,true,true),
+	 ('2025-10-14 08:25:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,6,23.8,53.8,395.0,77.0,true,true,false),
+	 ('2025-10-14 08:30:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,7,24.0,53.5,410.0,80.0,true,true,false),
+	 ('2025-10-14 08:35:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,8,24.2,53.3,425.0,82.0,true,true,false),
+	 ('2025-10-14 08:40:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,9,24.5,53.0,440.0,85.0,true,true,false),
+	 ('2025-10-14 08:45:00+02','8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,10,24.7,52.8,455.0,87.0,true,true,false);
 

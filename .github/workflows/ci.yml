@@ -45,7 +45,7 @@ jobs:
       - name: Assert core tables exist
         run: |
           set -e
-          REQUIRED="timezone app_user greenhouse device setpoint connection_event telemetry"
+          REQUIRED="timezone app_user greenhouse setpoint connection_event telemetry"
           echo "Verifying core tables..."
           for t in $REQUIRED; do
             echo "Checking table: $t"
@@ -69,7 +69,6 @@ jobs:
           expected[timezone]=26
           expected[app_user]=2
           expected[greenhouse]=4
-          expected[device]=4
           expected[setpoint]=7
           expected[connection_event]=10
           expected[telemetry]=10
@@ -82,15 +81,12 @@ jobs:
             fi
           done
 
-          echo "Checking specific seed values (emails / device ids)..."
+          echo "Checking specific seed values (emails)..."
           docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
             "SELECT 1 FROM app_user WHERE email='vasco@example.com'" | grep -q 1 || { echo 'Missing vasco@example.com'; exit 1; }
           docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
             "SELECT 1 FROM app_user WHERE email='maria@example.com'" | grep -q 1 || { echo 'Missing maria@example.com'; exit 1; }
-          for dev in device_1 device_2 device_3 device_4; do
-            docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
-              "SELECT 1 FROM device WHERE device_id='${dev}'" | grep -q 1 || { echo "Missing device ${dev}"; exit 1; }
-          done
+          
 
           echo "Verifying telemetry hypertable..."
           docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \

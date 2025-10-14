@@ -45,7 +45,7 @@ jobs:
       - name: Assert core tables exist
         run: |
           set -e
-          REQUIRED="timezone app_user greenhouse setpoint connection_event telemetry"
+          REQUIRED="timezone app_user greenhouse setpoint connection_event telemetry plants"
           echo "Verifying core tables..."
           for t in $REQUIRED; do
             echo "Checking table: $t"
@@ -69,7 +69,8 @@ jobs:
           expected[timezone]=26
           expected[app_user]=2
           expected[greenhouse]=4
-          expected[setpoint]=7
+          expected[plants]=15
+          expected[setpoint]=4
           expected[connection_event]=10
           expected[telemetry]=10
           for table in "${!expected[@]}"; do

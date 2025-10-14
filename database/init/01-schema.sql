@@ -250,4 +250,3 @@ BEGIN
         EXECUTE FUNCTION _timescaledb_functions.insert_blocker();
     END IF;
 END$$;
-

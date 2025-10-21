@@ -2,24 +2,16 @@
  * @file buffer_10min.cpp
  * @brief Low-resolution circular buffer (10-minute aggregates)
  * 
- * Stores aggregated telemetry from Buffer 1 (10 readings)
+ * Stores aggregated telemetry from Buffer #1 (10 aggregates)
  * Preserves data during extended outages
  */
 
 #include <Arduino.h>
+#include <string.h>
+#include "buffer.h"
 
 // Buffer configuration
 const int BUFFER_10MIN_SIZE = 10;
-
-// Telemetry structure (same as buffer_1min)
-struct TelemetryReading {
-  unsigned long timestamp;
-  float temperature;
-  float humidity;
-  float light;
-  bool tankLevel;
-  bool valid;
-};
 
 // Circular buffer
 TelemetryReading buffer10min[BUFFER_10MIN_SIZE];
@@ -37,8 +29,9 @@ void initBuffer10Min() {
 }
 
 /**
- * Aggregate 10 readings from 1-minute buffer and store
- * @param readings Array of 10 TelemetryReading structs
+ * Aggregate readings from 1-minute buffer and store
+ * @param readings Array of TelemetryReading structs
+ * @param count Number of readings to aggregate
  */
 void aggregateAndStore(TelemetryReading readings[], int count) {
   if (count == 0) {
@@ -46,8 +39,11 @@ void aggregateAndStore(TelemetryReading readings[], int count) {
   }
   
   // Calculate averages
-  TelemetryReading aggregate = {0};
-  aggregate.timestamp = readings[count - 1].timestamp; // Use latest timestamp
+  TelemetryReading aggregate;
+  memset(&aggregate, 0, sizeof(TelemetryReading));
+  
+  // Use latest timestamp
+  strncpy(aggregate.timestamp, readings[count - 1].timestamp, sizeof(aggregate.timestamp) - 1);
   
   float tempSum = 0, humSum = 0, lightSum = 0;
   
@@ -61,6 +57,9 @@ void aggregateAndStore(TelemetryReading readings[], int count) {
   aggregate.humidity = humSum / count;
   aggregate.light = lightSum / count;
   aggregate.tankLevel = readings[count - 1].tankLevel; // Use latest
+  aggregate.pumpOn = readings[count - 1].pumpOn;
+  aggregate.lightsOn = readings[count - 1].lightsOn;
+  aggregate.irrigated = readings[count - 1].irrigated;
   aggregate.valid = true;
   
   // Store in buffer
@@ -105,4 +104,32 @@ void removeOldestFrom10MinBuffer() {
  */
 int get10MinBufferCount() {
   return buffer10minCount;
+}
+
+/**
+ * Check if buffer is full
+ * @return true if buffer is at capacity
+ */
+bool is10MinBufferFull() {
+  return buffer10minCount >= BUFFER_10MIN_SIZE;
+}
+
+// ============================================
+// BUFFER MANAGEMENT FUNCTIONS
+// ============================================
+
+/**
+ * Get total buffered readings count
+ * @return Total number of readings across both buffers
+ */
+int getTotalBufferedCount() {
+  return get1MinBufferCount() + get10MinBufferCount();
+}
+
+/**
+ * Check if any buffer has data
+ * @return true if there is buffered data to send
+ */
+bool hasBufferedData() {
+  return (get1MinBufferCount() > 0) || (get10MinBufferCount() > 0);
 }

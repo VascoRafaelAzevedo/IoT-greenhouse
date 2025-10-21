@@ -3,23 +3,14 @@
  * @brief High-resolution circular buffer (1-minute readings)
  * 
  * Stores the most recent 10 telemetry readings (1 per minute)
- * Overwrites oldest data when full
+ * When full, data is aggregated and moved to Buffer #2
  */
 
 #include <Arduino.h>
+#include "buffer.h"
 
 // Buffer configuration
 const int BUFFER_1MIN_SIZE = 10;
-
-// Telemetry structure
-struct TelemetryReading {
-  unsigned long timestamp;
-  float temperature;
-  float humidity;
-  float light;
-  bool tankLevel;
-  bool valid;
-};
 
 // Circular buffer
 TelemetryReading buffer1min[BUFFER_1MIN_SIZE];
@@ -84,4 +75,12 @@ void removeOldestFrom1MinBuffer() {
  */
 int get1MinBufferCount() {
   return buffer1minCount;
+}
+
+/**
+ * Check if buffer is full
+ * @return true if buffer is at capacity
+ */
+bool is1MinBufferFull() {
+  return buffer1minCount >= BUFFER_1MIN_SIZE;
 }

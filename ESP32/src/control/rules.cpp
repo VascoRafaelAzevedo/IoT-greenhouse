@@ -7,6 +7,7 @@
 
 #include <Arduino.h>
 #include "../config.h"
+#include "../constants.h"
 #include "../control/control.h"
 #include "../actuators/actuators.h"
 
@@ -82,12 +83,12 @@ void controlFan(float humidity, float temperature) {
   bool shouldFanBeOn = false;
   
   // Check humidity condition
-  if (humidity != -999.0 && humidity > setpoint_hum_air_max) {
+  if (humidity != SENSOR_ERROR_TEMP && humidity > setpoint_hum_air_max) {
     shouldFanBeOn = true;
   }
   
   // Check temperature condition (fan helps cool down)
-  if (temperature != -999.0 && temperature > setpoint_temp_max) {
+  if (temperature != SENSOR_ERROR_TEMP && temperature > setpoint_temp_max) {
     shouldFanBeOn = true;
   }
   
@@ -109,7 +110,7 @@ void controlFan(float humidity, float temperature) {
  * Heating turns OFF if temperature reaches maximum setpoint
  */
 void controlHeating(float temperature) {
-  if (temperature != -999.0) {
+  if (temperature != SENSOR_ERROR_TEMP) {
     if (temperature < setpoint_temp_min) {
       if (!isHeatingOn()) {
         turnHeatingOn();

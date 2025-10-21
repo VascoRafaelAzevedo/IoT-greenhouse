@@ -24,7 +24,10 @@ void processMQTT();
 // Handle MQTT reconnection
 void handleMQTTReconnection();
 
-// Publish telemetry data to MQTT
+// Publish telemetry data to MQTT (or buffer if offline)
 bool publishTelemetry(float temperature, float humidity, float light, bool tankLevel, bool pumpOn, bool lightsOn);
+
+// Flush buffered telemetry after reconnection
+int flushBufferedTelemetry();
 
 #endif // MQTT_H

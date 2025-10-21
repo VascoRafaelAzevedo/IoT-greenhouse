@@ -6,12 +6,14 @@
 #include <Arduino.h>
 #include <time.h>
 #include "config.h"
+#include "constants.h"
 
 // Include module headers
 #include "sensors/sensors.h"
 #include "actuators/actuators.h"
 #include "control/control.h"
 #include "mqtt/mqtt.h"
+#include "buffer/buffer.h"
 
 #ifndef TEST_MODE
   // Only include Wire for production (I2C hardware)
@@ -20,7 +22,7 @@
 
 // Timing intervals
 unsigned long lastCycleTime = 0;
-const unsigned long CYCLE_INTERVAL = 5000; // Master cycle interval - change this to 60000 for production (1 minute)
+const unsigned long CYCLE_INTERVAL = 1000; // Master cycle interval - change this to 60000 for production (1 minute)
 
 void setup() {
   Serial.begin(115200);
@@ -57,6 +59,11 @@ void setup() {
   // Initialize control logic
   initControlLogic();
   
+  // Initialize circular buffers
+  Serial.println("\nInitializing buffers...");
+  initBuffer1Min();
+  initBuffer10Min();
+  
   // Initialize WiFi and MQTT
   initWiFi();
   initMQTT();
@@ -69,7 +76,7 @@ void setup() {
   }
   
   #ifndef TEST_MODE
-    delay(2000); // DHT stabilization (only in production)
+    delay(DHT_STABILIZATION_DELAY_MS); // DHT stabilization (only in production)
   #endif
 }
 
@@ -99,10 +106,8 @@ void loop() {
   // Process MQTT (handles incoming messages) - always process
   processMQTT();
   
-  // Handle MQTT reconnection if disconnected - always check
-  if (!isMQTTConnected()) {
-    handleMQTTReconnection();
-  }
+  // Handle MQTT reconnection - ALWAYS check to detect state changes
+  handleMQTTReconnection();
   
   // Execute one complete cycle every CYCLE_INTERVAL
   if (currentTime - lastCycleTime >= CYCLE_INTERVAL) {
@@ -122,7 +127,7 @@ void loop() {
     bool tankLevel = readTankLevel();
     
     Serial.print("  Temperature ... ");
-    if (temperature != -999.0) {
+    if (temperature != SENSOR_ERROR_TEMP) {
       Serial.print(temperature, 1);
       Serial.println(" °C");
     } else {
@@ -130,7 +135,7 @@ void loop() {
     }
     
     Serial.print("  Humidity ...... ");
-    if (humidity != -999.0) {
+    if (humidity != SENSOR_ERROR_HUM) {
       Serial.print(humidity, 1);
       Serial.println(" %");
     } else {
@@ -190,15 +195,22 @@ void loop() {
     Serial.print("  Connection .... ");
     Serial.println(isMQTTConnected() ? "CONNECTED" : "OFFLINE");
     
-    if (isMQTTConnected()) {
-      Serial.print("  Publishing .... ");
-      if (publishTelemetry(temperature, humidity, light, tankLevel, pumpStatus, ledStatus)) {
-        Serial.println("SUCCESS");
-      } else {
-        Serial.println("FAILED");
-      }
+    Serial.print("  Publishing .... ");
+    if (publishTelemetry(temperature, humidity, light, tankLevel, pumpStatus, ledStatus)) {
+      Serial.println(isMQTTConnected() ? "SUCCESS" : "BUFFERED");
     } else {
-      Serial.println("  Publishing .... SKIPPED (offline)");
+      Serial.println("FAILED");
+    }
+    
+    // Show buffer status
+    int buffer1Count = get1MinBufferCount();
+    int buffer2Count = get10MinBufferCount();
+    if (buffer1Count > 0 || buffer2Count > 0) {
+      Serial.print("  Buffer Status . B1:");
+      Serial.print(buffer1Count);
+      Serial.print("/10  B2:");
+      Serial.print(buffer2Count);
+      Serial.println("/10");
     }
     
     // 4. Cycle summary
@@ -225,5 +237,5 @@ void loop() {
   }
   
   // Small delay to prevent CPU hogging
-  delay(100);
+  delay(LOOP_DELAY_MS);
 }

@@ -3,10 +3,11 @@ import os
 
 def create_app():
     app = Flask(__name__)
+    
 
     @app.get("/health")
     def health():
-        return jsonify(status="ok", env=os.getenv("ENVIRONMENT","unknown"))
+             return jsonify(status="ok", env=os.getenv("ENVIRONMENT","unknown"))
 
     return app
 

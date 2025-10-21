@@ -54,7 +54,6 @@ CREATE TABLE public.setpoint (
     greenhouse_id uuid PRIMARY KEY,  -- unique per greenhouse
     target_temp_min float8 NULL,
     target_temp_max float8 NULL,
-    target_hum_air_min float8 NULL,
     target_hum_air_max float8 NULL,
     irrigation_interval_minutes int4 NULL,
     irrigation_duration_seconds int4 NULL,
@@ -69,7 +68,6 @@ CREATE TABLE public.plants (
 	plant_descripion text NOT NULL,
     target_temp_min float8 NULL,
     target_temp_max float8 NULL,
-    target_hum_air_min float8 NULL,
     target_hum_air_max float8 NULL,
     irrigation_interval_minutes int4 NULL,
     irrigation_duration_seconds int4 NULL,

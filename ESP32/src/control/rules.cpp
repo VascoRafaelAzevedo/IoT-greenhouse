@@ -6,91 +6,160 @@
  */
 
 #include <Arduino.h>
+#include "../config.h"
 #include "../control/control.h"
 #include "../actuators/actuators.h"
 
-// Control thresholds
-const float HUMIDITY_THRESHOLD = 70.0;  // Turn fan ON if humidity > 70%
-const float TEMP_TARGET = 22.0;         // Turn heating ON if temp < 22°C
+// ============================================
+// DYNAMIC SETPOINTS (can be updated via MQTT)
+// ============================================
+// Temperature control (in Celsius)
+float setpoint_temp_min = DEFAULT_TEMP_MIN;
+float setpoint_temp_max = DEFAULT_TEMP_MAX;
 
-// Pump cycle timing (in milliseconds)
-const unsigned long PUMP_ON_TIME = 10000;   // 10 seconds ON
-const unsigned long PUMP_OFF_TIME = 5000;   // 5 seconds OFF
-unsigned long lastPumpChange = 0;
-bool pumpCycleState = false; // false = OFF cycle, true = ON cycle
+// Humidity control (in percentage)
+float setpoint_hum_air_max = DEFAULT_HUM_AIR_MAX;
+
+// Light control (in arbitrary units)
+float setpoint_light_intensity = DEFAULT_LIGHT_INTENSITY;
+
+// Irrigation control
+unsigned long setpoint_irrigation_interval_minutes = DEFAULT_IRRIGATION_INTERVAL_MINUTES;
+unsigned long setpoint_irrigation_duration_seconds = DEFAULT_IRRIGATION_DURATION_SECONDS;
+
+// ============================================
+// IRRIGATION STATE TRACKING
+// ============================================
+unsigned long lastIrrigationStartTime = 0;  // When last irrigation started
+bool isIrrigating = false;                  // Currently irrigating?
+bool irrigatedSinceLastTransmission = false; // For telemetry reporting
 
 /**
  * Initialize control logic
  */
 void initControlLogic() {
-  lastPumpChange = millis();
-  pumpCycleState = false;
+  lastIrrigationStartTime = millis();
+  isIrrigating = false;
+  irrigatedSinceLastTransmission = false;
   
-  Serial.println("\n📋 Control Rules:");
-  Serial.println("   🌬️  Fan:     ON if Humidity > 70%");
-  Serial.println("   🔥 Heating:  ON if Temperature < 22°C");
-  Serial.println("   💧 Pump:     10s ON / 5s OFF cycle");
-  Serial.println("   💡 LED:      Manual control (OFF)\n");
+  Serial.println("\n📋 Control Rules (Default Setpoints):");
+  Serial.print("   �️  Temperature: ");
+  Serial.print(setpoint_temp_min);
+  Serial.print("°C - ");
+  Serial.print(setpoint_temp_max);
+  Serial.println("°C");
+  
+  Serial.print("   💧 Humidity:    Max ");
+  Serial.print(setpoint_hum_air_max);
+  Serial.println("%");
+  
+  Serial.print("   🌬️  Fan:        ON if Humidity > ");
+  Serial.print(setpoint_hum_air_max);
+  Serial.print("% OR Temp > ");
+  Serial.print(setpoint_temp_max);
+  Serial.println("°C");
+  
+  Serial.print("   💡 Light:       Target ");
+  Serial.print(setpoint_light_intensity);
+  Serial.println(" units");
+  
+  Serial.print("   🚰 Irrigation:  Every ");
+  Serial.print(setpoint_irrigation_interval_minutes);
+  Serial.print(" min, for ");
+  Serial.print(setpoint_irrigation_duration_seconds);
+  Serial.println(" sec");
+  
+  Serial.println("   💡 LED:         Manual control (OFF)\n");
 }
 
 /**
- * Execute fan control logic (Humidity-based)
+ * Execute fan control logic (Humidity-based AND Temperature-based)
+ * Fan turns ON if:
+ * - Humidity exceeds maximum setpoint OR
+ * - Temperature exceeds maximum setpoint (for cooling)
  */
-void controlFan(float humidity) {
-  if (humidity != -999.0) {
-    if (humidity > HUMIDITY_THRESHOLD) {
-      if (!isFanOn()) {
-        turnFanOn();
-      }
-    } else {
-      if (isFanOn()) {
-        turnFanOff();
-      }
+void controlFan(float humidity, float temperature) {
+  bool shouldFanBeOn = false;
+  
+  // Check humidity condition
+  if (humidity != -999.0 && humidity > setpoint_hum_air_max) {
+    shouldFanBeOn = true;
+  }
+  
+  // Check temperature condition (fan helps cool down)
+  if (temperature != -999.0 && temperature > setpoint_temp_max) {
+    shouldFanBeOn = true;
+  }
+  
+  // Apply fan state
+  if (shouldFanBeOn) {
+    if (!isFanOn()) {
+      turnFanOn();
+    }
+  } else {
+    if (isFanOn()) {
+      turnFanOff();
     }
   }
 }
 
 /**
  * Execute heating control logic (Temperature-based)
+ * Heating turns ON if temperature is below minimum setpoint
+ * Heating turns OFF if temperature reaches maximum setpoint
  */
 void controlHeating(float temperature) {
   if (temperature != -999.0) {
-    if (temperature < TEMP_TARGET) {
+    if (temperature < setpoint_temp_min) {
       if (!isHeatingOn()) {
         turnHeatingOn();
       }
-    } else {
+    } else if (temperature >= setpoint_temp_max) {
       if (isHeatingOn()) {
         turnHeatingOff();
       }
     }
+    // Keep current state if temperature is between min and max
   }
 }
 
 /**
- * Execute pump control logic (Timed cycle)
+ * Execute pump control logic (Irrigation interval/duration based)
+ * Irrigates for a set duration at specified intervals
  */
 void controlPump(bool tankLevel) {
   unsigned long currentTime = millis();
-  unsigned long timeSinceLastChange = currentTime - lastPumpChange;
+  unsigned long irrigation_interval_ms = setpoint_irrigation_interval_minutes * 60UL * 1000UL;
+  unsigned long irrigation_duration_ms = setpoint_irrigation_duration_seconds * 1000UL;
   
-  if (pumpCycleState) {
-    // Currently in ON cycle
-    if (timeSinceLastChange >= PUMP_ON_TIME) {
+  if (isIrrigating) {
+    // Currently irrigating - check if duration has elapsed
+    unsigned long timeSinceStart = currentTime - lastIrrigationStartTime;
+    
+    if (timeSinceStart >= irrigation_duration_ms) {
+      // Irrigation complete
       turnPumpOff();
-      pumpCycleState = false;
-      lastPumpChange = currentTime;
+      isIrrigating = false;
+      irrigatedSinceLastTransmission = true;
+      Serial.println("✅ Irrigation cycle completed");
     }
   } else {
-    // Currently in OFF cycle
-    if (timeSinceLastChange >= PUMP_OFF_TIME) {
-      if (tankLevel) { // Only turn ON if tank has water
+    // Not irrigating - check if it's time to start
+    unsigned long timeSinceLastIrrigation = currentTime - lastIrrigationStartTime;
+    
+    if (timeSinceLastIrrigation >= irrigation_interval_ms) {
+      // Time to irrigate
+      if (tankLevel) {
         turnPumpOn();
-        pumpCycleState = true;
-        lastPumpChange = currentTime;
+        isIrrigating = true;
+        lastIrrigationStartTime = currentTime;
+        Serial.print("🚰 Starting irrigation (");
+        Serial.print(setpoint_irrigation_duration_seconds);
+        Serial.println(" seconds)");
       } else {
-        Serial.println("⚠️  Pump cycle skipped - Tank empty!");
-        lastPumpChange = currentTime; // Reset timer to try again after OFF cycle
+        // Tank empty, skip this cycle and try again at next interval
+        Serial.println("⚠️  Irrigation skipped - Tank empty!");
+        lastIrrigationStartTime = currentTime; // Reset timer
       }
     }
   }
@@ -101,25 +170,88 @@ void controlPump(bool tankLevel) {
  * Should be called regularly with current sensor readings
  */
 void executeControlLogic(float temperature, float humidity, float light, bool tankLevel) {
-  controlFan(humidity);
+  controlFan(humidity, temperature);  // Fan uses both humidity and temperature
   controlHeating(temperature);
   controlPump(tankLevel);
   // LED is manual control, no automatic control
 }
 
 /**
- * Get pump cycle timing information
- * @param isInOnCycle Output parameter - true if currently in ON cycle
- * @return Time remaining in current cycle (milliseconds)
+ * Get irrigation timing information
+ * @param isCurrentlyIrrigating Output parameter - true if currently irrigating
+ * @return Time remaining until next event (ms): either until irrigation ends or until next irrigation starts
  */
-unsigned long getPumpCycleInfo(bool &isInOnCycle) {
+unsigned long getIrrigationInfo(bool &isCurrentlyIrrigating) {
   unsigned long currentTime = millis();
-  unsigned long timeSinceLastChange = currentTime - lastPumpChange;
-  isInOnCycle = pumpCycleState;
+  unsigned long irrigation_interval_ms = setpoint_irrigation_interval_minutes * 60UL * 1000UL;
+  unsigned long irrigation_duration_ms = setpoint_irrigation_duration_seconds * 1000UL;
   
-  if (pumpCycleState) {
-    return PUMP_ON_TIME - timeSinceLastChange;
+  isCurrentlyIrrigating = isIrrigating;
+  
+  if (isIrrigating) {
+    // Return time remaining in current irrigation
+    unsigned long timeSinceStart = currentTime - lastIrrigationStartTime;
+    if (timeSinceStart >= irrigation_duration_ms) {
+      return 0;
+    }
+    return irrigation_duration_ms - timeSinceStart;
   } else {
-    return PUMP_OFF_TIME - timeSinceLastChange;
+    // Return time until next irrigation
+    unsigned long timeSinceLastIrrigation = currentTime - lastIrrigationStartTime;
+    if (timeSinceLastIrrigation >= irrigation_interval_ms) {
+      return 0;
+    }
+    return irrigation_interval_ms - timeSinceLastIrrigation;
   }
+}
+
+/**
+ * Update setpoints from MQTT message
+ * @param temp_min Minimum temperature (Celsius)
+ * @param temp_max Maximum temperature (Celsius)
+ * @param hum_air_max Maximum humidity (percentage)
+ * @param light_intensity Target light intensity
+ * @param irrigation_interval_minutes Minutes between irrigations
+ * @param irrigation_duration_seconds Duration of each irrigation in seconds
+ */
+void updateSetpoints(float temp_min, float temp_max, float hum_air_max, 
+                     float light_intensity, unsigned long irrigation_interval_minutes, 
+                     unsigned long irrigation_duration_seconds) {
+  setpoint_temp_min = temp_min;
+  setpoint_temp_max = temp_max;
+  setpoint_hum_air_max = hum_air_max;
+  setpoint_light_intensity = light_intensity;
+  setpoint_irrigation_interval_minutes = irrigation_interval_minutes;
+  setpoint_irrigation_duration_seconds = irrigation_duration_seconds;
+  
+  Serial.println("\n🔄 Setpoints updated via MQTT:");
+  Serial.print("   🌡️  Temperature: ");
+  Serial.print(setpoint_temp_min);
+  Serial.print("°C - ");
+  Serial.print(setpoint_temp_max);
+  Serial.println("°C");
+  
+  Serial.print("   💧 Humidity:    Max ");
+  Serial.print(setpoint_hum_air_max);
+  Serial.println("%");
+  
+  Serial.print("   💡 Light:       Target ");
+  Serial.print(setpoint_light_intensity);
+  Serial.println(" units");
+  
+  Serial.print("   🚰 Irrigation:  Every ");
+  Serial.print(setpoint_irrigation_interval_minutes);
+  Serial.print(" min, for ");
+  Serial.print(setpoint_irrigation_duration_seconds);
+  Serial.println(" sec\n");
+}
+
+/**
+ * Check if irrigation occurred since last call and reset flag
+ * @return true if irrigation happened since last check
+ */
+bool checkAndResetIrrigationFlag() {
+  bool result = irrigatedSinceLastTransmission;
+  irrigatedSinceLastTransmission = false;
+  return result;
 }

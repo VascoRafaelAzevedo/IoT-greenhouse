@@ -12,7 +12,15 @@ void initControlLogic();
 // Execute all control logic
 void executeControlLogic(float temperature, float humidity, float light, bool tankLevel);
 
-// Get pump cycle timing information
-unsigned long getPumpCycleInfo(bool &isInOnCycle);
+// Get irrigation timing information
+unsigned long getIrrigationInfo(bool &isCurrentlyIrrigating);
+
+// Update setpoints from MQTT
+void updateSetpoints(float temp_min, float temp_max, float hum_air_max, 
+                     float light_intensity, unsigned long irrigation_interval_minutes, 
+                     unsigned long irrigation_duration_seconds);
+
+// Check and reset irrigation flag for telemetry
+bool checkAndResetIrrigationFlag();
 
 #endif // CONTROL_H

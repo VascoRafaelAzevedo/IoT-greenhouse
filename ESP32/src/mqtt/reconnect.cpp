@@ -4,9 +4,7 @@
  */
 
 #include <Arduino.h>
-
-// External references
-extern bool connectMQTT();
+#include "mqtt.h"
 
 // Reconnection state
 unsigned long lastReconnectAttempt = 0;
@@ -17,23 +15,18 @@ const unsigned long RECONNECT_INTERVAL = 5000; // 5 seconds
  * Should be called regularly in main loop
  */
 void handleMQTTReconnection() {
+  if (isMQTTConnected()) {
+    return; // Already connected
+  }
+  
   unsigned long now = millis();
   
   if (now - lastReconnectAttempt > RECONNECT_INTERVAL) {
     lastReconnectAttempt = now;
     
-    Serial.println("Attempting MQTT reconnection...");
+    Serial.println("🔄 Attempting MQTT reconnection...");
     if (connectMQTT()) {
       lastReconnectAttempt = 0; // Reset on successful connection
     }
   }
-}
-
-/**
- * Check if MQTT is connected
- * @return true if connected, false otherwise
- */
-bool isMQTTConnected() {
-  // TODO: Implement proper connection check
-  return false; // Placeholder
 }

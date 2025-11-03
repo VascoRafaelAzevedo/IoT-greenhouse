@@ -37,10 +37,10 @@ jobs:
 
       - name: Verify required extensions
         run: |
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc "SELECT extname FROM pg_extension WHERE extname='timescaledb'" | grep timescaledb || (echo 'timescaledb extension missing' && exit 1)
+          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc "SELECT extname FROM pg_extension WHERE extname='timescaledb'" | grep timescaledb || (echo 'timescaledb extension missing' && exit 1)
 
       - name: List tables (debug)
-        run: docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -c "\\dt"
+        run: docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c "\\dt"
 
       - name: Assert core tables exist
         run: |
@@ -49,12 +49,12 @@ jobs:
           echo "Verifying core tables..."
           for t in $REQUIRED; do
             echo "Checking table: $t"
-            docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -v ON_ERROR_STOP=1 -tAc \
+            docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -v ON_ERROR_STOP=1 -tAc \
               "SELECT relname FROM pg_catalog.pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace \
                WHERE n.nspname='public' AND c.relkind='r' AND relname='${t}'" | grep -qx "${t}" || {
                  echo "Missing table ${t}. Debug info:"
-                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -c "\dt public.${t}"
-                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -c \
+                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c "\dt public.${t}"
+                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c \
                    "SELECT oid, relkind, relname FROM pg_class WHERE relname='${t}'"
                  exit 1
                }
@@ -64,7 +64,7 @@ jobs:
       - name: Strict seed validation
         run: |
           set -e
-          echo "Validating seeded row counts..."
+          echo "Validating seeded row counts in greenhouse_test database..."
           declare -A expected
           expected[timezone]=26
           expected[app_user]=2
@@ -74,7 +74,7 @@ jobs:
           expected[connection_event]=10
           expected[telemetry]=10
           for table in "${!expected[@]}"; do
-            count=$(docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc "SELECT count(*) FROM $table" | tr -d '[:space:]')
+            count=$(docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc "SELECT count(*) FROM $table" | tr -d '[:space:]')
             echo "$table => $count (expected ${expected[$table]})"
             if [ "$count" != "${expected[$table]}" ]; then
               echo "FAIL: Table $table expected ${expected[$table]} rows, found $count"
@@ -83,19 +83,19 @@ jobs:
           done
 
           echo "Checking specific seed values (emails)..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
+          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
             "SELECT 1 FROM app_user WHERE email='vasco@example.com'" | grep -q 1 || { echo 'Missing vasco@example.com'; exit 1; }
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
+          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
             "SELECT 1 FROM app_user WHERE email='maria@example.com'" | grep -q 1 || { echo 'Missing maria@example.com'; exit 1; }
           
 
           echo "Verifying telemetry hypertable..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
+          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
             "SELECT hypertable_name FROM timescaledb_information.hypertables WHERE hypertable_schema='public' AND hypertable_name='telemetry'" | grep -q telemetry \
             || { echo 'telemetry is not a hypertable'; exit 1; }
 
           echo "Checking insert blocker trigger presence (optional)..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-greenhouse} -tAc \
+          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
             "SELECT 1 FROM pg_trigger WHERE tgname='ts_insert_blocker'" | grep -q 1 \
             || { echo 'Trigger ts_insert_blocker missing'; exit 1; }
 

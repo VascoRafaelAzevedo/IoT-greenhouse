@@ -35,6 +35,54 @@ INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 	 ('UTC+13',13),
 	 ('UTC+14',14);
 
+INSERT INTO public.plants (plant_it,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
+	 ('a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6'::uuid,'Tomato','Classic red tomato variety for greenhouse cultivation',18.0,28.0,80.0,120,45,600.0),
+	 ('b2c3d4e5-f6a7-48b9-c0d1-e2f3a4b5c6d7'::uuid,'Lettuce','Green leafy lettuce, ideal for salads',15.0,22.0,70.0,180,30,400.0),
+	 ('c3d4e5f6-a7b8-49c0-d1e2-f3a4b5c6d7e8'::uuid,'Cucumber','Long green cucumber for fresh consumption',20.0,30.0,85.0,90,50,550.0),
+	 ('d4e5f6a7-b8c9-40d1-e2f3-a4b5c6d7e8f9'::uuid,'Basil','Aromatic herb for culinary use',20.0,27.0,75.0,150,35,500.0),
+	 ('e5f6a7b8-c9d0-41e2-f3a4-b5c6d7e8f9a0'::uuid,'Bell Pepper','Sweet red bell pepper variety',21.0,29.0,80.0,100,40,580.0),
+	 ('f6a7b8c9-d0e1-42f3-a4b5-c6d7e8f9a0b1'::uuid,'Strawberry','Sweet strawberry for fresh eating',18.0,25.0,80.0,140,40,450.0),
+	 ('a7b8c9d0-e1f2-43a4-b5c6-d7e8f9a0b1c2'::uuid,'Mint','Fresh mint herb for teas and garnish',15.0,24.0,75.0,160,35,400.0),
+	 ('b8c9d0e1-f2a3-44b5-c6d7-e8f9a0b1c2d3'::uuid,'Spinach','Nutrient-rich leafy green vegetable',15.0,21.0,70.0,170,30,380.0),
+	 ('c9d0e1f2-a3b4-45c6-d7e8-f9a0b1c2d3e4'::uuid,'Zucchini','Green summer squash for grilling',18.0,28.0,80.0,110,45,560.0),
+	 ('d0e1f2a3-b4c5-46d7-e8f9-a0b1c2d3e4f5'::uuid,'Parsley','Curly parsley herb for garnishing',16.0,24.0,75.0,155,35,420.0),
+	 ('e1f2a3b4-c5d6-47e8-f9a0-b1c2d3e4f5a6'::uuid,'Chili Pepper','Hot chili pepper for spicy dishes',22.0,30.0,75.0,95,40,600.0),
+	 ('f2a3b4c5-d6e7-48f9-a0b1-c2d3e4f5a6b7'::uuid,'Eggplant','Purple eggplant for Mediterranean dishes',22.0,30.0,80.0,105,45,570.0),
+	 ('a3b4c5d6-e7f8-49a0-b1c2-d3e4f5a6b7c8'::uuid,'Carrot','Orange root vegetable rich in vitamins',16.0,24.0,75.0,130,35,450.0),
+	 ('b4c5d6e7-f8a9-40b1-c2d3-e4f5a6b7c8d9'::uuid,'Radish','Crisp red radish for salads',15.0,22.0,70.0,145,30,400.0),
+	 ('c5d6e7f8-a9b0-41c2-d3e4-f5a6b7c8d9e0'::uuid,'Thyme','Aromatic Mediterranean herb',18.0,26.0,70.0,165,35,480.0);
+
+\c greenhouse_test
+
+-- Insert timezones
+INSERT INTO public.timezone (tz_name,utc_offset) VALUES
+	 ('UTC-11',-11),
+	 ('UTC-10',-10),
+	 ('UTC-9',-9),
+	 ('UTC-8',-8),
+	 ('UTC-7',-7),
+	 ('UTC-6',-6),
+	 ('UTC-5',-5),
+	 ('UTC-4',-4),
+	 ('UTC-3',-3),
+	 ('UTC-2',-2),
+	 ('UTC-1',-1),
+	 ('UTC+0',0),
+	 ('UTC+1',1),
+	 ('UTC+2',2),
+	 ('UTC+3',3),
+	 ('UTC+4',4),
+	 ('UTC+5',5),
+	 ('UTC+6',6),
+	 ('UTC+7',7),
+	 ('UTC+8',8),
+	 ('UTC+9',9),
+	 ('UTC+10',10),
+	 ('UTC+11',11),
+	 ('UTC+12',12),
+	 ('UTC+13',13),
+	 ('UTC+14',14);
+
 -- Insert users
 INSERT INTO public.app_user (id,google_sub,email,display_name,timezone_id,created_at,last_login_at,phone_country_code,phone_number,password_hash) VALUES
 	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','hashed_password_1'),

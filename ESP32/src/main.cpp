@@ -14,6 +14,13 @@
 #include "control/control.h"
 #include "mqtt/mqtt.h"
 #include "buffer/buffer.h"
+#include "webserver/html_content.h"
+
+// Forward declarations for webserver functions
+void initWebServer();
+void updateCurrentReadings(float temp, float hum, float light, bool tank,
+                          bool pump, bool heating, bool led, bool fan);
+void processWebServer();
 
 #ifndef TEST_MODE
   // Only include Wire for production (I2C hardware)
@@ -68,6 +75,10 @@ void setup() {
   initWiFi();
   initMQTT();
   
+  // Initialize web server (works in AP mode)
+  Serial.println("\nInitializing web server...");
+  initWebServer();
+  
   // Attempt initial MQTT connection
   if (connectMQTT()) {
     Serial.println("\n✅ System ready with MQTT!");
@@ -102,6 +113,9 @@ String getFormattedTimestamp() {
 
 void loop() {
   unsigned long currentTime = millis();
+  
+  // Process web server (handles HTTP requests)
+  processWebServer();
   
   // Process MQTT (handles incoming messages) - always process
   processMQTT();
@@ -186,6 +200,10 @@ void loop() {
       Serial.print(seconds);
       Serial.println("s)");
     }
+    
+    // Update web server with current readings
+    updateCurrentReadings(temperature, humidity, light, tankLevel,
+                         isPumpOn(), isHeatingOn(), isLEDOn(), isFanOn());
     
     // 3. Publish telemetry
     Serial.println("\n[3/4] MQTT TELEMETRY:");

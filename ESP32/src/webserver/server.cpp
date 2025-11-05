@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include "../control/control.h"
 
 // External HTML content
 extern const char* HTML_CONTENT;
@@ -66,11 +67,85 @@ void handleData() {
 }
 
 /**
+ * Handle API endpoint for getting current setpoints (JSON)
+ */
+void handleGetSetpoints() {
+  float temp_min, temp_max, hum_air_max, light_intensity;
+  unsigned long irrigation_interval_minutes, irrigation_duration_seconds;
+  
+  getCurrentSetpoints(temp_min, temp_max, hum_air_max, light_intensity,
+                     irrigation_interval_minutes, irrigation_duration_seconds);
+  
+  char json[512];
+  snprintf(json, sizeof(json),
+    "{"
+    "\"temp_min\":%.1f,"
+    "\"temp_max\":%.1f,"
+    "\"hum_air_max\":%.1f,"
+    "\"light_intensity\":%.0f,"
+    "\"irrigation_interval_minutes\":%lu,"
+    "\"irrigation_duration_seconds\":%lu"
+    "}",
+    temp_min, temp_max, hum_air_max, light_intensity,
+    irrigation_interval_minutes, irrigation_duration_seconds
+  );
+  
+  server.send(200, "application/json", json);
+}
+
+/**
+ * Handle API endpoint for updating setpoints (POST)
+ */
+void handleUpdateSetpoints() {
+  if (server.method() != HTTP_POST) {
+    server.send(405, "text/plain", "Method Not Allowed");
+    return;
+  }
+  
+  // Parse URL parameters
+  float temp_min = server.arg("temp_min").toFloat();
+  float temp_max = server.arg("temp_max").toFloat();
+  float hum_air_max = server.arg("hum_air_max").toFloat();
+  float light_intensity = server.arg("light_intensity").toFloat();
+  unsigned long irrigation_interval = server.arg("irrigation_interval_minutes").toInt();
+  unsigned long irrigation_duration = server.arg("irrigation_duration_seconds").toInt();
+  
+  // Basic validation
+  if (temp_min <= 0 || temp_max <= 0 || temp_min >= temp_max) {
+    server.send(400, "text/plain", "Invalid temperature range");
+    return;
+  }
+  
+  if (hum_air_max <= 0 || hum_air_max > 100) {
+    server.send(400, "text/plain", "Invalid humidity (0-100)");
+    return;
+  }
+  
+  if (light_intensity < 0) {
+    server.send(400, "text/plain", "Invalid light intensity");
+    return;
+  }
+  
+  if (irrigation_interval == 0 || irrigation_duration == 0) {
+    server.send(400, "text/plain", "Invalid irrigation values");
+    return;
+  }
+  
+  // Update setpoints (same function used by MQTT)
+  updateSetpoints(temp_min, temp_max, hum_air_max, light_intensity,
+                 irrigation_interval, irrigation_duration);
+  
+  server.send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Setpoints updated\"}");
+}
+
+/**
  * Initialize web server
  */
 void initWebServer() {
   server.on("/", handleRoot);
   server.on("/data", handleData);
+  server.on("/setpoints", HTTP_GET, handleGetSetpoints);
+  server.on("/setpoints", HTTP_POST, handleUpdateSetpoints);
   
   server.begin();
   Serial.println("Web server started on http://192.168.4.1");

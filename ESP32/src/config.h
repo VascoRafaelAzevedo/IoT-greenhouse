@@ -14,7 +14,7 @@
 // ============================================
 // Comment out the line below to switch to PRODUCTION mode (real hardware)
 // Uncomment it to enable TEST mode (mock sensors/actuators, no hardware needed)
-#define TEST_MODE
+//#define TEST_MODE
 
 // ============================================
 // MODE INDICATOR
@@ -38,8 +38,8 @@
 // WiFi CONFIGURATION
 // ============================================
 // TODO: Replace with your WiFi credentials
-#define WIFI_SSID "QUARTO"
-#define WIFI_PASSWORD "71866628"
+#define WIFI_SSID "wifi"
+#define WIFI_PASSWORD "12345789"
 
 // ============================================
 // MQTT BROKER CONFIGURATION
@@ -64,14 +64,14 @@
 // Values match the database schema (setpoint table)
 
 // Temperature control (in Celsius)
-#define DEFAULT_TEMP_MIN 22.0f
-#define DEFAULT_TEMP_MAX 24.0f
+#define DEFAULT_TEMP_MIN 20.0f
+#define DEFAULT_TEMP_MAX 21.0f
 
 // Humidity control (in percentage)
 #define DEFAULT_HUM_AIR_MAX 70.0f
 
 // Light control (in arbitrary units)
-#define DEFAULT_LIGHT_INTENSITY 500.0f
+#define DEFAULT_LIGHT_INTENSITY 1000.0f
 
 // Irrigation control
 #define DEFAULT_IRRIGATION_INTERVAL_MINUTES 1  // 

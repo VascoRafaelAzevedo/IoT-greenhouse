@@ -64,13 +64,19 @@ void initControlLogic() {
   Serial.print(setpoint_light_intensity);
   Serial.println(" units");
   
-  Serial.print("   🚰 Irrigation:  Every ");
+  Serial.print("   � LED Strip:   ON if Light < ");
+  Serial.print(setpoint_light_intensity);
+  Serial.println(" lux (Automatic)");
+  
+  Serial.print("   �🚰 Irrigation:  Every ");
   Serial.print(setpoint_irrigation_interval_minutes);
   Serial.print(" min, for ");
   Serial.print(setpoint_irrigation_duration_seconds);
   Serial.println(" sec");
   
-  Serial.println("   💡 LED:         Manual control (OFF)\n");
+  Serial.println("   🌬️  Fan:        Automatic (Temp/Humidity based)");
+  Serial.println("   🔥 Heating:     Automatic (Temperature based)");
+  Serial.println("   💡 LED Strip:   Automatic (Light based)\n");
 }
 
 /**
@@ -167,6 +173,28 @@ void controlPump(bool tankLevel) {
 }
 
 /**
+ * Execute LED control logic (Light-based)
+ * LED turns ON if light is below the setpoint threshold
+ * LED turns OFF if light reaches or exceeds the setpoint threshold
+ */
+void controlLED(float light) {
+  if (light >= 0) { // Valid light reading (not SENSOR_ERROR_LIGHT)
+    if (light < setpoint_light_intensity) {
+      // Light is below threshold - turn LED ON
+      if (!isLEDOn()) {
+        turnLEDOn();
+      }
+    } else {
+      // Light is at or above threshold - turn LED OFF
+      if (isLEDOn()) {
+        turnLEDOff();
+      }
+    }
+  }
+  // If sensor error, keep current state
+}
+
+/**
  * Execute all control logic
  * Should be called regularly with current sensor readings
  */
@@ -174,7 +202,7 @@ void executeControlLogic(float temperature, float humidity, float light, bool ta
   controlFan(humidity, temperature);  // Fan uses both humidity and temperature
   controlHeating(temperature);
   controlPump(tankLevel);
-  // LED is manual control, no automatic control
+  controlLED(light);  // LED uses light sensor reading
 }
 
 /**
@@ -225,7 +253,7 @@ void updateSetpoints(float temp_min, float temp_max, float hum_air_max,
   setpoint_irrigation_interval_minutes = irrigation_interval_minutes;
   setpoint_irrigation_duration_seconds = irrigation_duration_seconds;
   
-  Serial.println("\n🔄 Setpoints updated via MQTT:");
+  Serial.println("\n🔄 Setpoints updated:");
   Serial.print("   🌡️  Temperature: ");
   Serial.print(setpoint_temp_min);
   Serial.print("°C - ");
@@ -240,11 +268,29 @@ void updateSetpoints(float temp_min, float temp_max, float hum_air_max,
   Serial.print(setpoint_light_intensity);
   Serial.println(" units");
   
-  Serial.print("   🚰 Irrigation:  Every ");
+  Serial.print("   � LED Strip:   ON if Light < ");
+  Serial.print(setpoint_light_intensity);
+  Serial.println(" lux");
+  
+  Serial.print("   �🚰 Irrigation:  Every ");
   Serial.print(setpoint_irrigation_interval_minutes);
   Serial.print(" min, for ");
   Serial.print(setpoint_irrigation_duration_seconds);
   Serial.println(" sec\n");
+}
+
+/**
+ * Get current setpoints (for webserver display/editing)
+ */
+void getCurrentSetpoints(float &temp_min, float &temp_max, float &hum_air_max,
+                        float &light_intensity, unsigned long &irrigation_interval_minutes,
+                        unsigned long &irrigation_duration_seconds) {
+  temp_min = setpoint_temp_min;
+  temp_max = setpoint_temp_max;
+  hum_air_max = setpoint_hum_air_max;
+  light_intensity = setpoint_light_intensity;
+  irrigation_interval_minutes = setpoint_irrigation_interval_minutes;
+  irrigation_duration_seconds = setpoint_irrigation_duration_seconds;
 }
 
 /**

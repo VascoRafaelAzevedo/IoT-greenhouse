@@ -29,7 +29,7 @@ const char* HTML_CONTENT = R"rawliteral(
             min-height: 100vh;
         }
         .container {
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
         h1 {
@@ -83,11 +83,98 @@ const char* HTML_CONTENT = R"rawliteral(
             color: #f87171;
             font-weight: bold;
         }
+        .setpoint-form {
+            display: grid;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .form-group label {
+            flex: 1;
+            font-size: 0.95em;
+        }
+        .form-group input {
+            width: 100px;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 1em;
+            text-align: center;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
         .timestamp {
             text-align: center;
             opacity: 0.7;
             font-size: 0.85em;
             margin-top: 15px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            background: rgba(74, 222, 128, 0.9);
+            color: #fff;
+            font-weight: bold;
+            display: none;
+            animation: slideIn 0.3s;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
@@ -95,57 +182,114 @@ const char* HTML_CONTENT = R"rawliteral(
     <div class="container">
         <h1>🌱 GardenAway Greenhouse</h1>
         
-        <div class="card">
-            <h2 style="margin-bottom: 15px;">📊 Sensor Readings</h2>
-            <div class="sensor-grid">
-                <div class="sensor-item">
-                    <div class="sensor-label">Temperature</div>
-                    <div class="sensor-value" id="temp">--</div>
-                    <div class="sensor-label">°C</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">Humidity</div>
-                    <div class="sensor-value" id="humidity">--</div>
-                    <div class="sensor-label">%</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">Light</div>
-                    <div class="sensor-value" id="light">--</div>
-                    <div class="sensor-label">lux</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">Tank Level</div>
-                    <div class="sensor-value" id="tank">--</div>
-                </div>
-            </div>
+        <div class="tab-container">
+            <button class="tab active" onclick="showTab('monitor')">📊 Monitor</button>
+            <button class="tab" onclick="showTab('setpoints')">⚙️ Setpoints</button>
         </div>
         
-        <div class="card">
-            <h2 style="margin-bottom: 15px;">⚙️ Actuator Status</h2>
-            <div class="actuator-grid">
-                <div class="actuator-item">
-                    <span>💧 Pump</span>
-                    <span id="pump-status">--</span>
-                </div>
-                <div class="actuator-item">
-                    <span>🔥 Heating</span>
-                    <span id="heating-status">--</span>
-                </div>
-                <div class="actuator-item">
-                    <span>💡 LED</span>
-                    <span id="led-status">--</span>
-                </div>
-                <div class="actuator-item">
-                    <span>🌬️ Fan</span>
-                    <span id="fan-status">--</span>
+        <div id="monitor-tab" class="tab-content active">
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">📊 Sensor Readings</h2>
+                <div class="sensor-grid">
+                    <div class="sensor-item">
+                        <div class="sensor-label">Temperature</div>
+                        <div class="sensor-value" id="temp">--</div>
+                        <div class="sensor-label">°C</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-label">Humidity</div>
+                        <div class="sensor-value" id="humidity">--</div>
+                        <div class="sensor-label">%</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-label">Light</div>
+                        <div class="sensor-value" id="light">--</div>
+                        <div class="sensor-label">lux</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-label">Tank Level</div>
+                        <div class="sensor-value" id="tank">--</div>
+                    </div>
                 </div>
             </div>
+            
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">⚙️ Actuator Status</h2>
+                <div class="actuator-grid">
+                    <div class="actuator-item">
+                        <span>💧 Pump</span>
+                        <span id="pump-status">--</span>
+                    </div>
+                    <div class="actuator-item">
+                        <span>🔥 Heating</span>
+                        <span id="heating-status">--</span>
+                    </div>
+                    <div class="actuator-item">
+                        <span>💡 LED (Auto)</span>
+                        <span id="led-status">--</span>
+                    </div>
+                    <div class="actuator-item">
+                        <span>🌬️ Fan</span>
+                        <span id="fan-status">--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="timestamp" id="timestamp">Last update: --</div>
         </div>
         
-        <div class="timestamp" id="timestamp">Last update: --</div>
+        <div id="setpoints-tab" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">⚙️ Control Setpoints</h2>
+                <form id="setpoint-form" class="setpoint-form">
+                    <div class="form-group">
+                        <label>🌡️ Temperature Min (°C):</label>
+                        <input type="number" step="0.1" id="temp_min" name="temp_min" required>
+                    </div>
+                    <div class="form-group">
+                        <label>🌡️ Temperature Max (°C):</label>
+                        <input type="number" step="0.1" id="temp_max" name="temp_max" required>
+                    </div>
+                    <div class="form-group">
+                        <label>💧 Humidity Max (%):</label>
+                        <input type="number" step="0.1" id="hum_air_max" name="hum_air_max" required>
+                    </div>
+                    <div class="form-group">
+                        <label>💡 Light Target (lux):</label>
+                        <input type="number" step="1" id="light_intensity" name="light_intensity" required>
+                    </div>
+                    <div style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; font-size: 0.85em; margin: 10px 0; opacity: 0.9;">
+                        ℹ️ LED strip turns ON automatically when light is below this threshold
+                    </div>
+                    <div class="form-group">
+                        <label>🚰 Irrigation Interval (min):</label>
+                        <input type="number" step="1" id="irrigation_interval_minutes" name="irrigation_interval_minutes" required>
+                    </div>
+                    <div class="form-group">
+                        <label>⏱️ Irrigation Duration (sec):</label>
+                        <input type="number" step="1" id="irrigation_duration_seconds" name="irrigation_duration_seconds" required>
+                    </div>
+                    <button type="submit" class="btn">💾 Save Setpoints</button>
+                </form>
+            </div>
+        </div>
     </div>
     
+    <div id="notification" class="notification"></div>
+    
     <script>
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            if (tabName === 'setpoints') {
+                loadSetpoints();
+            }
+        }
+        
         function updateData() {
             fetch('/data')
                 .then(response => response.json())
@@ -173,7 +317,53 @@ const char* HTML_CONTENT = R"rawliteral(
             element.className = isOn ? 'status-on' : 'status-off';
         }
         
-        // Update every 5 seconds
+        function loadSetpoints() {
+            fetch('/setpoints')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('temp_min').value = data.temp_min;
+                    document.getElementById('temp_max').value = data.temp_max;
+                    document.getElementById('hum_air_max').value = data.hum_air_max;
+                    document.getElementById('light_intensity').value = data.light_intensity;
+                    document.getElementById('irrigation_interval_minutes').value = data.irrigation_interval_minutes;
+                    document.getElementById('irrigation_duration_seconds').value = data.irrigation_duration_seconds;
+                })
+                .catch(err => console.error('Error loading setpoints:', err));
+        }
+        
+        function showNotification(message, isError = false) {
+            const notif = document.getElementById('notification');
+            notif.textContent = message;
+            notif.style.background = isError ? 'rgba(248, 113, 113, 0.9)' : 'rgba(74, 222, 128, 0.9)';
+            notif.style.display = 'block';
+            setTimeout(() => notif.style.display = 'none', 3000);
+        }
+        
+        document.getElementById('setpoint-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const params = new URLSearchParams(formData);
+            
+            fetch('/setpoints', {
+                method: 'POST',
+                body: params
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { throw new Error(text); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                showNotification('✅ Setpoints updated successfully!');
+            })
+            .catch(err => {
+                showNotification('❌ Error: ' + err.message, true);
+            });
+        });
+        
+        // Update sensor data every 5 seconds
         updateData();
         setInterval(updateData, 5000);
     </script>

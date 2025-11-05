@@ -65,13 +65,27 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 /**
  * Initialize WiFi connection
+ * First creates AP, then tries to connect to WiFi for MQTT
  */
 void initWiFi() {
-  Serial.println("\n🌐 Connecting to WiFi...");
+  // 1. Start Access Point for local web interface
+  Serial.println("\n📡 Starting Access Point...");
+  Serial.println("AP SSID: GardenAway-ESP32");
+  Serial.println("AP Password: greenhouse123");
+  
+  WiFi.mode(WIFI_AP_STA); // Both AP and Station mode
+  WiFi.softAP("GardenAway-ESP32", "greenhouse123");
+  
+  IPAddress apIP = WiFi.softAPIP();
+  Serial.print("✅ AP started! IP address: ");
+  Serial.println(apIP);
+  Serial.println("🌐 Web interface available at: http://192.168.4.1");
+  
+  // 2. Try to connect to WiFi for MQTT (optional)
+  Serial.println("\n🌐 Attempting WiFi connection for MQTT...");
   Serial.print("SSID: ");
   Serial.println(WIFI_SSID);
   
-  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
   int attempts = 0;
@@ -83,7 +97,7 @@ void initWiFi() {
   
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n✅ WiFi connected!");
-    Serial.print("IP address: ");
+    Serial.print("Station IP address: ");
     Serial.println(WiFi.localIP());
     
     // Initialize NTP time synchronization
@@ -109,8 +123,8 @@ void initWiFi() {
       ntpSynced = false;
     }
   } else {
-    Serial.println("\n❌ WiFi connection failed!");
-    Serial.println("⚠️  System will continue without MQTT");
+    Serial.println("\n⚠️  WiFi connection failed!");
+    Serial.println("✅ System will continue with AP mode only (no MQTT)");
   }
 }
 

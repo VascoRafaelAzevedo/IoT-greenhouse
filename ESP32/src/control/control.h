@@ -20,6 +20,11 @@ void updateSetpoints(float temp_min, float temp_max, float hum_air_max,
                      float light_intensity, unsigned long irrigation_interval_minutes, 
                      unsigned long irrigation_duration_seconds);
 
+// Get current setpoints (for webserver display)
+void getCurrentSetpoints(float &temp_min, float &temp_max, float &hum_air_max,
+                        float &light_intensity, unsigned long &irrigation_interval_minutes,
+                        unsigned long &irrigation_duration_seconds);
+
 // Check and reset irrigation flag for telemetry
 bool checkAndResetIrrigationFlag();
 

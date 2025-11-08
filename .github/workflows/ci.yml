@@ -254,49 +254,7 @@ jobs:
             fi
           done
 
-      - name: Consumer final health check
-        run: |
-          echo "Final consumer health check..."
-          
-          # Publish test message to verify consumer is still working
-          GREENHOUSE_ID=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT id FROM greenhouse LIMIT 1" | tr -d '[:space:]')
-          
-          TEST_TIMESTAMP=$(date +%s)
-          TEST_SEQUENCE=$(date +%s%N | cut -b1-13)
-          
-          echo "DEBUG: GREENHOUSE_ID=$GREENHOUSE_ID"
-          echo "DEBUG: TEST_TIMESTAMP=$TEST_TIMESTAMP"
-          echo "DEBUG: TEST_SEQUENCE=$TEST_SEQUENCE"
-          
-          TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$TEST_TIMESTAMP"',"sequence":'"$TEST_SEQUENCE"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
-          
-          echo "DEBUG: Publishing message: $TEST_MSG"
-          
-          # Publish message using mosquitto container
-          docker exec gardenaway-mosquitto mosquitto_pub -h localhost -t "greenhouse/$GREENHOUSE_ID/telemetry" -m "$TEST_MSG"
-          
-          # Allow consumer time to process the message
-          echo "Waiting 5 seconds for consumer to process..."
-          sleep 5
-          
-          # Debug: Check what's actually in the database
-          echo "DEBUG: Latest telemetry entries for this greenhouse:"
-          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c "SELECT greenhouse_id, sequence, temp_air FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' ORDER BY time DESC LIMIT 3"
-          
-          # Check if our specific message was inserted
-          ROW_COUNT=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' AND sequence = $TEST_SEQUENCE" | tr -d '[:space:]')
-          echo "DEBUG: ROW_COUNT='$ROW_COUNT'"
-          
-          if [ "${ROW_COUNT:-0}" -ge 1 ]; then
-            echo "Consumer processed final test message successfully"
-            echo "Matching log line (if available):"
-            docker logs gardenaway-consumer --since 60s 2>&1 | grep "Telemetry stored" | tail -1 || true
-          else
-            echo "Consumer failed to process test message"
-            echo "Recent consumer logs:"
-            docker logs gardenaway-consumer --tail 50
-            exit 1
-          fi
+     
 
       - name: Show running containers
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml ps

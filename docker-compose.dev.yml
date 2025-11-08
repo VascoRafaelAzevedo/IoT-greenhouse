@@ -7,11 +7,13 @@ services:
     environment:
       ENVIRONMENT: development
       LOG_LEVEL: DEBUG
+      DB_NAME: greenhouse_test  # Use test database with seed data
   consumer:
     volumes:
       - ./consumer:/app
     environment:
       RUST_LOG: debug
+      DB_NAME: greenhouse_test  # Use test database with seed data
   frontend:
     volumes:
       - ./frontend:/app

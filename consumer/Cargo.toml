@@ -3,7 +3,23 @@ name = "consumer"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "consumer"
+path = "src/main.rs"
+
+[lib]
+name = "consumer"
+path = "src/lib.rs"
+
 [dependencies]
-rumqttc = "0.24"
-tokio = { version = "1", features = ["full"] }
-tokio-postgres = "0.7"
+rumqttc = "0.25.0"
+tokio = { version = "1.48.0", features = ["full"] }
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-uuid-1"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.15"
+uuid = { version = "1.0", features = ["serde", "v4"] }
+log = "0.4"
+env_logger = "0.11"
+anyhow = "1.0"

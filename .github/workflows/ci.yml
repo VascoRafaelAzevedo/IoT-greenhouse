@@ -283,11 +283,12 @@ jobs:
           mosquitto_pub -h localhost -t "greenhouse/$GREENHOUSE_ID/telemetry" -m "$TEST_MSG"
           
           # Wait and check logs
-          sleep 2
-          docker logs gardenaway-consumer --tail 20 2>&1 | grep "Telemetry stored" && {
+          sleep 3
+          docker logs gardenaway-consumer --since 10s 2>&1 | grep -q "Telemetry stored" && {
             echo "✅ Consumer processed final test message successfully"
           } || {
             echo "❌ Consumer failed to process test message"
+            echo "Recent consumer logs:"
             docker logs gardenaway-consumer --tail 50
             exit 1
           }

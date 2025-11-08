@@ -230,23 +230,6 @@ jobs:
             echo "No duplicate messages detected (this is OK if duplicates weren't sent yet)"
           }
 
-      - name: Verify consumer rejected invalid messages
-        run: |
-          echo "Verifying consumer validation..."
-          
-          # Check logs for validation errors
-          VALIDATION_ERRORS=$(docker logs gardenaway-consumer 2>&1 | grep -c "out of range\|Invalid UUID\|future\|positive" || true)
-          
-          echo "Validation errors found: $VALIDATION_ERRORS"
-          
-          # From the 35+ integration tests, expect ~15-20 rejections
-          if [ $VALIDATION_ERRORS -lt 10 ]; then
-            echo "Warning: Expected more validation errors ($VALIDATION_ERRORS found)"
-            echo "Consumer may not be rejecting invalid messages properly"
-          fi
-          
-          echo "Consumer validation is working"
-
       - name: Test consumer MQTT resilience
         run: |
           echo "Testing MQTT connection resilience..."

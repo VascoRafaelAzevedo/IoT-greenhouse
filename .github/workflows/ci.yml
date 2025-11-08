@@ -133,20 +133,20 @@ jobs:
         run: |
           echo "Running 30 unit tests for models validation..."
           cargo test --lib --verbose
-          echo "✅ All unit tests passed"
+          echo "All unit tests passed"
 
       - name: Verify consumer is running
         run: |
           docker ps | grep gardenaway-consumer || { echo "Consumer container not running"; docker logs gardenaway-consumer; exit 1; }
-          echo "✅ Consumer container is running"
+          echo "Consumer container is running"
 
       - name: Wait for consumer to be ready
         run: |
           echo "Waiting for consumer to establish MQTT connection..."
           for i in {1..20}; do
-            docker logs gardenaway-consumer 2>&1 | grep -q "MQTT connected" && { echo "✅ Consumer connected to MQTT"; break; } || sleep 2
+            docker logs gardenaway-consumer 2>&1 | grep -q "MQTT connected" && { echo "Consumer connected to MQTT"; break; } || sleep 2
             if [ $i -eq 20 ]; then
-              echo "❌ Consumer did not connect to MQTT in time"
+              echo "Consumer did not connect to MQTT in time"
               docker logs gardenaway-consumer
               exit 1
             fi
@@ -154,7 +154,7 @@ jobs:
 
       - name: Snapshot database state (before integration tests)
         run: |
-          echo "📸 Taking snapshot of database state before integration tests..."
+          echo "Taking snapshot of database state before integration tests..."
           docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry" > /tmp/telemetry_count_before.txt
           docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM connection_event" > /tmp/connection_event_count_before.txt
           BEFORE_TELEMETRY=$(cat /tmp/telemetry_count_before.txt | tr -d '[:space:]')
@@ -180,11 +180,11 @@ jobs:
           cd consumer
           ./test_consumer_ci.sh
           
-          echo "✅ Integration tests completed"
+          echo "Integration tests completed"
 
       - name: Verify database changes after integration tests
         run: |
-          echo "🔍 Verifying database state changes..."
+          echo "Verifying database state changes..."
           
           # Give consumer time to process all messages
           sleep 5
@@ -206,33 +206,33 @@ jobs:
           # Validate that valid messages were inserted
           # From the integration test script, we expect ~15-20 valid messages out of 35+ tests
           if [ $TELEMETRY_DIFF -lt 10 ]; then
-            echo "⚠️  Warning: Expected at least 10 new telemetry rows, got $TELEMETRY_DIFF"
+            echo "Warning: Expected at least 10 new telemetry rows, got $TELEMETRY_DIFF"
             echo "This might indicate consumer is rejecting valid messages"
           fi
           
           if [ $TELEMETRY_DIFF -gt 30 ]; then
-            echo "❌ Error: Too many telemetry rows added ($TELEMETRY_DIFF)"
+            echo "Error: Too many telemetry rows added ($TELEMETRY_DIFF)"
             echo "Consumer may be accepting invalid messages that should be rejected"
             exit 1
           fi
           
-          echo "✅ Database changes are within expected range"
+          echo "Database changes are within expected range"
 
       - name: Verify consumer processed duplicate messages correctly
         run: |
-          echo "🔍 Checking duplicate message handling..."
+          echo "Checking duplicate message handling..."
           
           # The integration tests publish duplicate messages (same timestamp + sequence)
           # Check consumer logs for deduplication messages
           docker logs gardenaway-consumer 2>&1 | grep "Duplicate telemetry ignored" && {
-            echo "✅ Consumer correctly detected and ignored duplicate messages"
+            echo "Consumer correctly detected and ignored duplicate messages"
           } || {
-            echo "ℹ️  No duplicate messages detected (this is OK if duplicates weren't sent yet)"
+            echo "No duplicate messages detected (this is OK if duplicates weren't sent yet)"
           }
 
       - name: Verify consumer rejected invalid messages
         run: |
-          echo "🔍 Verifying consumer validation..."
+          echo "Verifying consumer validation..."
           
           # Check logs for validation errors
           VALIDATION_ERRORS=$(docker logs gardenaway-consumer 2>&1 | grep -c "out of range\|Invalid UUID\|future\|positive" || true)
@@ -241,15 +241,15 @@ jobs:
           
           # From the 35+ integration tests, expect ~15-20 rejections
           if [ $VALIDATION_ERRORS -lt 10 ]; then
-            echo "⚠️  Warning: Expected more validation errors ($VALIDATION_ERRORS found)"
+            echo "Warning: Expected more validation errors ($VALIDATION_ERRORS found)"
             echo "Consumer may not be rejecting invalid messages properly"
           fi
           
-          echo "✅ Consumer validation is working"
+          echo "Consumer validation is working"
 
       - name: Test consumer MQTT resilience
         run: |
-          echo "🔄 Testing MQTT connection resilience..."
+          echo "Testing MQTT connection resilience..."
           
           # Restart MQTT broker
           docker restart gardenaway-mosquitto
@@ -260,12 +260,12 @@ jobs:
           # Check if consumer reconnects
           for i in {1..15}; do
             docker logs gardenaway-consumer --since 10s 2>&1 | grep -q "MQTT connected\|Reconnecting" && {
-              echo "✅ Consumer successfully reconnected to MQTT broker"
+              echo "Consumer successfully reconnected to MQTT broker"
               break
             }
             sleep 2
             if [ $i -eq 15 ]; then
-              echo "❌ Consumer failed to reconnect to MQTT"
+              echo "Consumer failed to reconnect to MQTT"
               docker logs gardenaway-consumer --tail 50
               exit 1
             fi
@@ -273,21 +273,37 @@ jobs:
 
       - name: Consumer final health check
         run: |
-          echo "🏥 Final consumer health check..."
+          echo "Final consumer health check..."
           
           # Publish test message to verify consumer is still working
           GREENHOUSE_ID=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT id FROM greenhouse LIMIT 1" | tr -d '[:space:]')
           
           TEST_TIMESTAMP=$(date +%s)
           TEST_SEQUENCE=$(date +%s%N | cut -b1-13)
+          
+          echo "DEBUG: GREENHOUSE_ID=$GREENHOUSE_ID"
+          echo "DEBUG: TEST_TIMESTAMP=$TEST_TIMESTAMP"
+          echo "DEBUG: TEST_SEQUENCE=$TEST_SEQUENCE"
+          
           TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$TEST_TIMESTAMP"',"sequence":'"$TEST_SEQUENCE"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
           
-          mosquitto_pub -h localhost -t "greenhouse/$GREENHOUSE_ID/telemetry" -m "$TEST_MSG"
+          echo "DEBUG: Publishing message: $TEST_MSG"
+          
+          # Publish message using mosquitto container
+          docker exec gardenaway-mosquitto mosquitto_pub -h localhost -t "greenhouse/$GREENHOUSE_ID/telemetry" -m "$TEST_MSG"
           
           # Allow consumer time to process the message
-          sleep 3
+          echo "Waiting 5 seconds for consumer to process..."
+          sleep 5
           
+          # Debug: Check what's actually in the database
+          echo "DEBUG: Latest telemetry entries for this greenhouse:"
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c "SELECT greenhouse_id, sequence, temp_air FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' ORDER BY time DESC LIMIT 3"
+          
+          # Check if our specific message was inserted
           ROW_COUNT=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' AND sequence = $TEST_SEQUENCE" | tr -d '[:space:]')
+          echo "DEBUG: ROW_COUNT='$ROW_COUNT'"
+          
           if [ "${ROW_COUNT:-0}" -ge 1 ]; then
             echo "Consumer processed final test message successfully"
             echo "Matching log line (if available):"
@@ -304,7 +320,7 @@ jobs:
 
       - name: Consumer logs summary
         run: |
-          echo "📋 Consumer logs summary:"
+          echo "Consumer logs summary:"
           echo "========================="
           docker logs gardenaway-consumer 2>&1 | tail -100
 

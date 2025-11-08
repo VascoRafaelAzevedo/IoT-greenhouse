@@ -278,20 +278,26 @@ jobs:
           # Publish test message to verify consumer is still working
           GREENHOUSE_ID=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT id FROM greenhouse LIMIT 1" | tr -d '[:space:]')
           
-          TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$(date +%s)"',"sequence":'"$(date +%s%N | cut -b1-13)"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
+          TEST_TIMESTAMP=$(date +%s)
+          TEST_SEQUENCE=$(date +%s%N | cut -b1-13)
+          TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$TEST_TIMESTAMP"',"sequence":'"$TEST_SEQUENCE"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
           
           mosquitto_pub -h localhost -t "greenhouse/$GREENHOUSE_ID/telemetry" -m "$TEST_MSG"
           
-          # Wait and check logs
+          # Allow consumer time to process the message
           sleep 3
-          docker logs gardenaway-consumer --since 10s 2>&1 | grep -q "Telemetry stored" && {
-            echo "✅ Consumer processed final test message successfully"
-          } || {
-            echo "❌ Consumer failed to process test message"
+          
+          ROW_COUNT=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' AND sequence = $TEST_SEQUENCE" | tr -d '[:space:]')
+          if [ "${ROW_COUNT:-0}" -ge 1 ]; then
+            echo "0 Consumer processed final test message successfully"
+            echo "📋 Matching log line (if available):"
+            docker logs gardenaway-consumer --since 60s 2>&1 | grep "Telemetry stored" | tail -1 || true
+          else
+            echo " Consumer failed to process test message"
             echo "Recent consumer logs:"
             docker logs gardenaway-consumer --tail 50
             exit 1
-          }
+          fi
 
       - name: Show running containers
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml ps

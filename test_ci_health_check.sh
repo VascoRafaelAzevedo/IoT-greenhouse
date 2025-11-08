@@ -46,7 +46,9 @@ fi
 echo "✅ Using greenhouse: $GREENHOUSE_ID"
 
 # Create test message (same format as CI)
-TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$(date +%s)"',"sequence":'"$(date +%s%N | cut -b1-13)"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
+TEST_TIMESTAMP=$(date +%s)
+TEST_SEQUENCE=$(date +%s%N | cut -b1-13)
+TEST_MSG='{"device_id":"'"$GREENHOUSE_ID"'","timestamp":'"$TEST_TIMESTAMP"',"sequence":'"$TEST_SEQUENCE"',"temperature":23.0,"humidity":60.0,"light":400.0,"lights_are_on":true,"tank_level":true}'
 
 # Publish message
 echo ""
@@ -58,17 +60,17 @@ echo ""
 echo "⏳ Waiting 3 seconds for processing..."
 sleep 3
 
-echo "🔍 Checking consumer logs..."
-if docker logs gardenaway-consumer --since 10s 2>&1 | grep -q "Telemetry stored"; then
+echo "🔍 Checking database for inserted row..."
+ROW_COUNT=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' AND sequence = $TEST_SEQUENCE" | tr -d '[:space:]')
+
+if [ "${ROW_COUNT:-0}" -ge 1 ]; then
     echo ""
     echo "✅✅✅ SUCCESS! Consumer processed final test message successfully"
     echo ""
     echo "This means your CI health check will PASS! 🎉"
     echo ""
-    
-    # Show the actual log line
-    echo "📋 Matching log line:"
-    docker logs gardenaway-consumer --since 10s 2>&1 | grep "Telemetry stored" | tail -1
+    echo "📋 Matching log line (if available):"
+    docker logs gardenaway-consumer --since 60s 2>&1 | grep "Telemetry stored" | tail -1 || true
     
     exit 0
 else

@@ -454,7 +454,7 @@ if [ $VALIDATION_ERRORS -lt $((INVALID_TESTS - 5)) ]; then
 fi
 
 # Check for successful insertions
-SUCCESSFUL_INSERTS=$(docker logs gardenaway-consumer --since 60s 2>&1 | grep -c "Stored telemetry" || true)
+SUCCESSFUL_INSERTS=$(docker logs gardenaway-consumer --since 60s 2>&1 | grep -c "Telemetry stored" || true)
 echo "Successful insertions: $SUCCESSFUL_INSERTS"
 
 if [ $SUCCESSFUL_INSERTS -lt $((VALID_TESTS - 2)) ]; then

@@ -284,7 +284,7 @@ jobs:
           
           # Wait and check logs
           sleep 2
-          docker logs gardenaway-consumer --tail 20 2>&1 | grep "Stored telemetry" && {
+          docker logs gardenaway-consumer --tail 20 2>&1 | grep "Telemetry stored" && {
             echo "✅ Consumer processed final test message successfully"
           } || {
             echo "❌ Consumer failed to process test message"

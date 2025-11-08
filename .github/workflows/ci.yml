@@ -289,11 +289,11 @@ jobs:
           
           ROW_COUNT=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry WHERE greenhouse_id = '$GREENHOUSE_ID' AND sequence = $TEST_SEQUENCE" | tr -d '[:space:]')
           if [ "${ROW_COUNT:-0}" -ge 1 ]; then
-            echo "0 Consumer processed final test message successfully"
-            echo "📋 Matching log line (if available):"
+            echo "Consumer processed final test message successfully"
+            echo "Matching log line (if available):"
             docker logs gardenaway-consumer --since 60s 2>&1 | grep "Telemetry stored" | tail -1 || true
           else
-            echo " Consumer failed to process test message"
+            echo "Consumer failed to process test message"
             echo "Recent consumer logs:"
             docker logs gardenaway-consumer --tail 50
             exit 1

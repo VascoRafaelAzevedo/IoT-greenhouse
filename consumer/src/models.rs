@@ -122,7 +122,7 @@ impl TelemetryMessage {
     /// Validate that the message has required fields and values in range
     pub fn validate(&self) -> Result<(), String> {
         // Temperature validation (-50°C to 100°C)
-        if self.temperature < -50.0 || self.temperature > 100.0 {
+        if !(-50.0..=100.0).contains(&self.temperature) {
             return Err(format!(
                 "Temperature out of range: {} (valid: -50.0 to 100.0)",
                 self.temperature
@@ -130,7 +130,7 @@ impl TelemetryMessage {
         }
 
         // Humidity validation (0% to 100%, no negatives)
-        if self.humidity < 0.0 || self.humidity > 100.0 {
+        if !(0.0..=100.0).contains(&self.humidity) {
             return Err(format!(
                 "Humidity out of range: {} (valid: 0.0 to 100.0)",
                 self.humidity
@@ -138,7 +138,7 @@ impl TelemetryMessage {
         }
 
         // Light validation (0 to 100000 lux)
-        if self.light < 0.0 || self.light > 100000.0 {
+        if !(0.0..=100000.0).contains(&self.light) {
             return Err(format!(
                 "Light value out of range: {} (valid: 0.0 to 100000.0)",
                 self.light
@@ -147,7 +147,7 @@ impl TelemetryMessage {
 
         // Light intensity validation (0% to 100%, optional)
         if let Some(intensity) = self.light_intensity {
-            if intensity < 0.0 || intensity > 100.0 {
+            if !(0.0..=100.0).contains(&intensity) {
                 return Err(format!(
                     "Light intensity out of range: {} (valid: 0.0 to 100.0)",
                     intensity

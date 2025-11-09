@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "name": "Tomatoes",
+    "optimalTemperature": { "min": 20, "max": 26 },
+    "optimalHumidity": { "min": 60, "max": 80 },
+    "optimalWaterLevel": { "min": 70, "max": 90 },
+    "optimalSoilHumidity": { "min": 60, "max": 80 },
+    "optimalLighting": { "min": 80, "max": 100 }
+  },
+  {
+    "id": "2",
+    "name": "Lettuce",
+    "optimalTemperature": { "min": 16, "max": 22 },
+    "optimalHumidity": { "min": 50, "max": 70 },
+    "optimalWaterLevel": { "min": 60, "max": 80 },
+    "optimalSoilHumidity": { "min": 60, "max": 80 },
+    "optimalLighting": { "min": 60, "max": 80 }
+  }
+]

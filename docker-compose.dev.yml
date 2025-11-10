@@ -1,18 +1,32 @@
-# Dev overrides: mount source, enable live reload, lower restart aggressiveness
+# Dev overrides: optimized for CI testing
+# For local development with hot-reload, use docker-compose.local.yml instead
 services:
+  postgres:
+    environment:
+      # Override database name for testing
+      POSTGRES_DB: ${DB_NAME:-greenhouse_test}
+
   backend:
-    volumes:
-      - ./api:/app
     environment:
-      ENVIRONMENT: development
-      LOG_LEVEL: DEBUG
-      DB_NAME: greenhouse_test  # Use test database with seed data
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      # Ensure backend uses test database
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-greenhouse_test}
+    # NO volume mounts in CI - use built code
+    # For local dev, use docker-compose.local.yml
+
   consumer:
-    volumes:
-      - ./consumer:/app
     environment:
-      RUST_LOG: debug
-      DB_NAME: greenhouse_test  # Use test database with seed data
+      RUST_LOG: ${RUST_LOG:-debug}
+      DB_NAME: ${DB_NAME:-greenhouse_test}
+    # NO volume mounts in CI - use built binary
+
   frontend:
-    volumes:
-      - ./frontend:/app
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    # NO volume mounts in CI - use built static files

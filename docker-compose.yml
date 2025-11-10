@@ -30,7 +30,6 @@ services:
       - "${MQTT_PORT:-1883}:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      # password file optional later when auth enabled
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
     networks:
@@ -47,7 +46,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PORT: ${BACKEND_PORT}
+      PORT: ${BACKEND_PORT:-4000}
       USE_MOCK_DB: ${USE_MOCK_DB:-false}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       NODE_ENV: ${ENVIRONMENT:-production}
@@ -84,16 +83,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # OPÇÃO 1: Pass build arg (se usar Dockerfile com ARG)
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
     image: gardenaway-frontend:local
     container_name: gardenaway-frontend
     restart: unless-stopped
     depends_on:
       - backend
     environment:
-      VITE_API_URL: ${VITE_API_URL}
+      # OPÇÃO 2: Runtime env (se usar docker-entrypoint.sh)
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
     ports:
       - "${FRONTEND_PORT:-3000}:80"
-
     networks:
       - gardenaway-network
 

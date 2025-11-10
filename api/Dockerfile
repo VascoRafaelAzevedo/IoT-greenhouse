@@ -22,6 +22,10 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER nodejs
 
+# Health check (optional but recommended)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
+
 EXPOSE 4000
 
 # Use dumb-init to handle signals properly

@@ -12,8 +12,14 @@ jobs:
     env:
       CI: true
       BACKEND_PORT: 4000
+      FRONTEND_PORT: 3000
       VITE_API_URL: http://localhost:4000
-      USE_MOCK_DB: true
+      USE_MOCK_DB: false
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: greenhouse_test
+      DB_NAME_TEST: greenhouse_test
+      ENVIRONMENT: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,17 +27,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Copy env example
-        run: cp .env.example .env
+      - name: Copy and configure env for testing
+        run: |
+          cp .env.example .env
+          # Override with test database
+          echo "DB_NAME=greenhouse_test" >> .env
+          echo "DB_NAME_TEST=greenhouse_test" >> .env
+          echo "USE_MOCK_DB=false" >> .env
+          echo "VITE_API_URL=http://localhost:4000" >> .env
+          cat .env
 
       - name: Build images
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml build --parallel
 
-      - name: Start core stack (DB + MQTT + Backend + Consumer) in TEST mode
+      - name: Start infrastructure (DB + MQTT)
         run: |
-          echo "Starting services with test database (greenhouse_test)..."
-          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres mosquitto backend consumer
-          echo "Services started in development mode with greenhouse_test database"
+          echo "Starting database and MQTT broker..."
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres mosquitto
+          echo "Infrastructure services started"
 
       - name: Wait for Postgres healthy
         run: |
@@ -39,14 +52,19 @@ jobs:
             STATUS=$(docker inspect -f '{{json .State.Health.Status}}' gardenaway-postgres || echo '"starting"');
             echo "Postgres health: $STATUS";
             if [ "$STATUS" = '"healthy"' ]; then exit 0; fi; sleep 3;
-          done; echo "Postgres not healthy in time"; docker logs gardenaway-postgres; exit 1
+          done
+          echo "Postgres not healthy in time"
+          docker logs gardenaway-postgres
+          exit 1
 
       - name: Verify required extensions
         run: |
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc "SELECT extname FROM pg_extension WHERE extname='timescaledb'" | grep timescaledb || (echo 'timescaledb extension missing' && exit 1)
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT extname FROM pg_extension WHERE extname='timescaledb'" | grep timescaledb || \
+            (echo 'timescaledb extension missing' && exit 1)
 
       - name: List tables (debug)
-        run: docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c "\\dt"
+        run: docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c "\\dt"
 
       - name: Assert core tables exist
         run: |
@@ -55,12 +73,12 @@ jobs:
           echo "Verifying core tables..."
           for t in $REQUIRED; do
             echo "Checking table: $t"
-            docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -v ON_ERROR_STOP=1 -tAc \
+            docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -v ON_ERROR_STOP=1 -tAc \
               "SELECT relname FROM pg_catalog.pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace \
                WHERE n.nspname='public' AND c.relkind='r' AND relname='${t}'" | grep -qx "${t}" || {
                  echo "Missing table ${t}. Debug info:"
-                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c "\dt public.${t}"
-                 docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -c \
+                 docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c "\dt public.${t}"
+                 docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -c \
                    "SELECT oid, relkind, relname FROM pg_class WHERE relname='${t}'"
                  exit 1
                }
@@ -80,7 +98,8 @@ jobs:
           expected[connection_event]=10
           expected[telemetry]=10
           for table in "${!expected[@]}"; do
-            count=$(docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc "SELECT count(*) FROM $table" | tr -d '[:space:]')
+            count=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+              "SELECT count(*) FROM $table" | tr -d '[:space:]')
             echo "$table => $count (expected ${expected[$table]})"
             if [ "$count" != "${expected[$table]}" ]; then
               echo "FAIL: Table $table expected ${expected[$table]} rows, found $count"
@@ -89,44 +108,78 @@ jobs:
           done
 
           echo "Checking specific seed values (emails)..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
-            "SELECT 1 FROM app_user WHERE email='vasco@example.com'" | grep -q 1 || { echo 'Missing vasco@example.com'; exit 1; }
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
-            "SELECT 1 FROM app_user WHERE email='maria@example.com'" | grep -q 1 || { echo 'Missing maria@example.com'; exit 1; }
-          
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT 1 FROM app_user WHERE email='vasco@example.com'" | grep -q 1 || \
+            { echo 'Missing vasco@example.com'; exit 1; }
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT 1 FROM app_user WHERE email='maria@example.com'" | grep -q 1 || \
+            { echo 'Missing maria@example.com'; exit 1; }
 
           echo "Verifying telemetry hypertable..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
-            "SELECT hypertable_name FROM timescaledb_information.hypertables WHERE hypertable_schema='public' AND hypertable_name='telemetry'" | grep -q telemetry \
-            || { echo 'telemetry is not a hypertable'; exit 1; }
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT hypertable_name FROM timescaledb_information.hypertables \
+             WHERE hypertable_schema='public' AND hypertable_name='telemetry'" | grep -q telemetry || \
+            { echo 'telemetry is not a hypertable'; exit 1; }
 
-          echo "Checking insert blocker trigger presence (optional)..."
-          docker exec gardenaway-postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME_TEST:-greenhouse_test} -tAc \
-            "SELECT 1 FROM pg_trigger WHERE tgname='ts_insert_blocker'" | grep -q 1 \
-            || { echo 'Trigger ts_insert_blocker missing'; exit 1; }
+          echo "Checking insert blocker trigger presence..."
+          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT 1 FROM pg_trigger WHERE tgname='ts_insert_blocker'" | grep -q 1 || \
+            { echo 'Trigger ts_insert_blocker missing'; exit 1; }
 
           echo "Seed validation PASSED."
+
+      - name: Start backend and consumer
+        run: |
+          echo "Starting backend API and consumer..."
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d backend consumer
+          echo "Backend and consumer started"
 
       - name: Backend API health endpoint
         run: |
           echo "Testing backend API on port 4000..."
-          for i in {1..15}; do 
-            curl -fsS http://localhost:4000/ | grep -q "GardenAway API" && { echo "Backend API is healthy"; exit 0; } || sleep 2
+          for i in {1..20}; do 
+            curl -fsS http://localhost:4000/ | grep -q "GardenAway API" && { 
+              echo "Backend API is healthy"; 
+              exit 0; 
+            } || sleep 3
           done
           echo 'Backend API health check failed'
           docker logs gardenaway-backend
           exit 1
 
+      - name: Start frontend
+        run: |
+          echo "Starting frontend..."
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d frontend
+          echo "Frontend started"
+
       - name: Frontend build and health check
         run: |
           echo "Verifying frontend container is running..."
-          docker ps | grep gardenaway-frontend || { echo "Frontend container not running"; docker logs gardenaway-frontend; exit 1; }
-          echo "Testing frontend HTTP response..."
-          for i in {1..10}; do curl -fsS http://localhost:3000/ && exit 0 || sleep 2; done; echo 'Frontend health check failed'; docker logs gardenaway-frontend; exit 1
+          docker ps | grep gardenaway-frontend || { 
+            echo "Frontend container not running"
+            docker logs gardenaway-frontend 2>&1 || echo "Cannot get frontend logs"
+            exit 1
+          }
+          
+          echo "Testing frontend HTTP response on port 3000..."
+          for i in {1..15}; do 
+            curl -fsS http://localhost:3000/ && { 
+              echo "Frontend is healthy"
+              exit 0
+            } || sleep 3
+          done
+          
+          echo 'Frontend health check failed'
+          docker logs gardenaway-frontend
+          exit 1
 
       - name: MQTT broker smoke test (publish/subscribe)
         run: |
-          docker exec gardenaway-mosquitto sh -c "(mosquitto_sub -t ci/test -C 1 > /tmp/ci_msg.out &) ; sleep 1; mosquitto_pub -t ci/test -m ci-ok; sleep 2; cat /tmp/ci_msg.out" | grep ci-ok || (echo 'MQTT smoke test failed' && exit 1)
+          docker exec gardenaway-mosquitto sh -c \
+            "(mosquitto_sub -t ci/test -C 1 > /tmp/ci_msg.out &) ; sleep 1; \
+             mosquitto_pub -t ci/test -m ci-ok; sleep 2; cat /tmp/ci_msg.out" | \
+            grep ci-ok || (echo 'MQTT smoke test failed' && exit 1)
 
       # ========== CONSUMER TESTS ==========
       
@@ -147,20 +200,27 @@ jobs:
       - name: Consumer unit tests
         working-directory: consumer
         run: |
-          echo "Running 30 unit tests for models validation..."
+          echo "Running unit tests for models validation..."
           cargo test --lib --verbose
           echo "All unit tests passed"
 
       - name: Verify consumer is running
         run: |
-          docker ps | grep gardenaway-consumer || { echo "Consumer container not running"; docker logs gardenaway-consumer; exit 1; }
+          docker ps | grep gardenaway-consumer || { 
+            echo "Consumer container not running"
+            docker logs gardenaway-consumer
+            exit 1
+          }
           echo "Consumer container is running"
 
       - name: Wait for consumer to be ready
         run: |
           echo "Waiting for consumer to establish MQTT connection..."
           for i in {1..20}; do
-            docker logs gardenaway-consumer 2>&1 | grep -q "MQTT connected" && { echo "Consumer connected to MQTT"; break; } || sleep 2
+            docker logs gardenaway-consumer 2>&1 | grep -q "MQTT connected" && { 
+              echo "Consumer connected to MQTT"
+              break
+            } || sleep 2
             if [ $i -eq 20 ]; then
               echo "Consumer did not connect to MQTT in time"
               docker logs gardenaway-consumer
@@ -171,10 +231,11 @@ jobs:
       - name: Snapshot database state (before integration tests)
         run: |
           echo "Taking snapshot of database state before integration tests..."
-          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry" > /tmp/telemetry_count_before.txt
-          docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM connection_event" > /tmp/connection_event_count_before.txt
-          BEFORE_TELEMETRY=$(cat /tmp/telemetry_count_before.txt | tr -d '[:space:]')
-          BEFORE_CONNECTIONS=$(cat /tmp/connection_event_count_before.txt | tr -d '[:space:]')
+          BEFORE_TELEMETRY=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT count(*) FROM telemetry" | tr -d '[:space:]')
+          BEFORE_CONNECTIONS=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT count(*) FROM connection_event" | tr -d '[:space:]')
+          
           echo "Before - Telemetry rows: $BEFORE_TELEMETRY"
           echo "Before - Connection events: $BEFORE_CONNECTIONS"
           echo "BEFORE_TELEMETRY=$BEFORE_TELEMETRY" >> $GITHUB_ENV
@@ -205,8 +266,10 @@ jobs:
           # Give consumer time to process all messages
           sleep 5
           
-          AFTER_TELEMETRY=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM telemetry" | tr -d '[:space:]')
-          AFTER_CONNECTIONS=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc "SELECT count(*) FROM connection_event" | tr -d '[:space:]')
+          AFTER_TELEMETRY=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT count(*) FROM telemetry" | tr -d '[:space:]')
+          AFTER_CONNECTIONS=$(docker exec gardenaway-postgres psql -U postgres -d greenhouse_test -tAc \
+            "SELECT count(*) FROM connection_event" | tr -d '[:space:]')
           
           echo "After - Telemetry rows: $AFTER_TELEMETRY"
           echo "After - Connection events: $AFTER_CONNECTIONS"
@@ -220,7 +283,6 @@ jobs:
           echo "  - Connection events added: $CONNECTIONS_DIFF"
           
           # Validate that valid messages were inserted
-          # From the integration test script, we expect ~15-20 valid messages out of 35+ tests
           if [ $TELEMETRY_DIFF -lt 10 ]; then
             echo "Warning: Expected at least 10 new telemetry rows, got $TELEMETRY_DIFF"
             echo "This might indicate consumer is rejecting valid messages"
@@ -237,13 +299,10 @@ jobs:
       - name: Verify consumer processed duplicate messages correctly
         run: |
           echo "Checking duplicate message handling..."
-          
-          # The integration tests publish duplicate messages (same timestamp + sequence)
-          # Check consumer logs for deduplication messages
           docker logs gardenaway-consumer 2>&1 | grep "Duplicate telemetry ignored" && {
             echo "Consumer correctly detected and ignored duplicate messages"
           } || {
-            echo "No duplicate messages detected (this is OK if duplicates weren't sent yet)"
+            echo "No duplicate messages detected in logs (may not have been sent)"
           }
 
       - name: Test consumer MQTT resilience
@@ -252,8 +311,6 @@ jobs:
           
           # Restart MQTT broker
           docker restart gardenaway-mosquitto
-          
-          # Wait for broker to be ready
           sleep 3
           
           # Check if consumer reconnects
@@ -270,30 +327,39 @@ jobs:
             fi
           done
 
-     
-
       - name: Show running containers
+        if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
 
       - name: Consumer logs summary
+        if: always()
         run: |
+          echo "==========================="
           echo "Consumer logs summary:"
-          echo "========================="
+          echo "==========================="
           docker logs gardenaway-consumer 2>&1 | tail -100
 
       - name: Logs on failure
         if: failure()
         run: |
           echo "=== Backend API Logs ==="
-          docker logs gardenaway-backend --tail 200
+          docker logs gardenaway-backend --tail 200 2>&1 || echo "Cannot get backend logs"
+          
+          echo ""
           echo "=== Frontend Logs ==="
-          docker logs gardenaway-frontend --tail 100
+          docker logs gardenaway-frontend --tail 100 2>&1 || echo "Cannot get frontend logs"
+          
+          echo ""
           echo "=== Consumer Logs ==="
-          docker logs gardenaway-consumer --tail 200
+          docker logs gardenaway-consumer --tail 200 2>&1 || echo "Cannot get consumer logs"
+          
+          echo ""
           echo "=== Postgres Logs ==="
-          docker logs gardenaway-postgres --tail 100
+          docker logs gardenaway-postgres --tail 100 2>&1 || echo "Cannot get postgres logs"
+          
+          echo ""
           echo "=== MQTT Logs ==="
-          docker logs gardenaway-mosquitto --tail 100
+          docker logs gardenaway-mosquitto --tail 100 2>&1 || echo "Cannot get MQTT logs"
 
       - name: Tear down
         if: always()

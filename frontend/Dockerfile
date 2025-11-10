@@ -2,6 +2,12 @@
 # Stage 1: Build the React app
 FROM node:20-alpine AS builder
 
+# Build argument for API URL (passed during docker build)
+ARG VITE_API_URL=http://localhost:4000
+
+# Set as environment variable for Vite build
+ENV VITE_API_URL=${VITE_API_URL}
+
 WORKDIR /app
 
 # Copy package files
@@ -13,7 +19,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (Vite will use VITE_API_URL)
 RUN npm run build
 
 # Stage 2: Serve with Nginx

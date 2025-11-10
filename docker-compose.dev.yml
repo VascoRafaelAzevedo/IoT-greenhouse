@@ -1,7 +1,6 @@
-version: '3.8'
 # Dev overrides: mount source, enable live reload, lower restart aggressiveness
 services:
-  api:
+  backend:
     volumes:
       - ./api:/app
     environment:

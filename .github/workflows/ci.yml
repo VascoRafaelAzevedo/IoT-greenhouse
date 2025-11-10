@@ -14,7 +14,8 @@ jobs:
       BACKEND_PORT: 4000
       VITE_API_URL: http://localhost:4000
       USE_MOCK_DB: false
-      DB_NAME: greenhouse_test  # Use test database in CI
+      # Use test database for backend and consumer (postgres creates both DBs)
+      DATABASE_URL: postgresql://postgres:change_me_strong_pass@postgres:5432/greenhouse_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +27,7 @@ jobs:
         run: cp .env.example .env
 
       - name: Build images
-        run: docker compose build --parallel
+        run: docker compose build backend consumer frontend
 
       - name: Start core stack (DB + MQTT + Backend + Consumer) in TEST mode
         run: |

@@ -1,11 +1,6 @@
 # Dev overrides: optimized for CI testing
 # For local development with hot-reload, use docker-compose.local.yml instead
 services:
-  postgres:
-    environment:
-      # Override database name for testing
-      POSTGRES_DB: ${DB_NAME:-greenhouse_test}
-
   backend:
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}

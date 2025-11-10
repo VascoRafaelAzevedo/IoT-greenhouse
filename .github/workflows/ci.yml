@@ -104,9 +104,16 @@ jobs:
 
           echo "Seed validation PASSED."
 
-      - name: API health endpoint
+      - name: Backend API health endpoint
         run: |
-          for i in {1..15}; do curl -fsS http://localhost:${API_PORT:-5000}/health && exit 0 || sleep 2; done; echo 'API health failed'; docker logs gardenaway-api; exit 1
+          for i in {1..15}; do curl -fsS http://localhost:${API_PORT:-5000}/health && exit 0 || sleep 2; done; echo 'Backend API health failed'; docker logs gardenaway-backend; exit 1
+
+      - name: Frontend build and health check
+        run: |
+          echo "Verifying frontend container is running..."
+          docker ps | grep gardenaway-frontend || { echo "Frontend container not running"; docker logs gardenaway-frontend; exit 1; }
+          echo "Testing frontend HTTP response..."
+          for i in {1..10}; do curl -fsS http://localhost:3000/ && exit 0 || sleep 2; done; echo 'Frontend health check failed'; docker logs gardenaway-frontend; exit 1
 
       - name: MQTT broker smoke test (publish/subscribe)
         run: |
@@ -268,8 +275,10 @@ jobs:
       - name: Logs on failure
         if: failure()
         run: |
-          echo "=== API Logs ==="
-          docker logs gardenaway-api --tail 200
+          echo "=== Backend API Logs ==="
+          docker logs gardenaway-backend --tail 200
+          echo "=== Frontend Logs ==="
+          docker logs gardenaway-frontend --tail 100
           echo "=== Consumer Logs ==="
           docker logs gardenaway-consumer --tail 200
           echo "=== Postgres Logs ==="

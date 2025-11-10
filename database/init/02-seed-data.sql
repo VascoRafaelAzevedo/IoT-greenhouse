@@ -114,11 +114,11 @@ INSERT INTO public.plants (plant_it,plant_name,plant_descripion,target_temp_min,
 	 ('c5d6e7f8-a9b0-41c2-d3e4-f5a6b7c8d9e0'::uuid,'Thyme','Aromatic Mediterranean herb',18.0,26.0,70.0,165,35,480.0);
 
 -- Insert setpoints (one per greenhouse)
-INSERT INTO public.setpoint (greenhouse_id,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity,changed_at) VALUES
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,20.0,28.0,70.0,120,40,550.0,'2025-10-14 08:00:00+02'),
-	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,18.0,26.0,75.0,150,35,500.0,'2025-10-14 07:30:00+02'),
-	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,22.0,30.0,80.0,100,45,600.0,'2025-10-14 09:00:00+02'),
-	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,19.0,27.0,75.0,130,38,520.0,'2025-10-13 20:00:00+02');
+INSERT INTO public.setpoint (greenhouse_id,plant_name,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity,changed_at) VALUES
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'Tomato',20.0,28.0,70.0,120,40,550.0,'2025-10-14 08:00:00+02'),
+	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'Lettuce',18.0,26.0,75.0,150,35,500.0,'2025-10-14 07:30:00+02'),
+	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,'Strawberry',22.0,30.0,80.0,100,45,600.0,'2025-10-14 09:00:00+02'),
+	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'Bell Pepper',19.0,27.0,75.0,130,38,520.0,'2025-10-13 20:00:00+02');
 
 -- Insert connection events
 INSERT INTO public.connection_event (greenhouse_id,start_ts,end_ts) VALUES

@@ -1,151 +1,73 @@
-# 🌿 Greenhouse Project
+# React + TypeScript + Vite
 
-This repository contains both the **frontend** (React) and **backend** (Node.js + Express) parts of the Greenhouse project.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## ⚛️ Frontend (React + Vite + Tailwind)
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-The **frontend** is built using **React**, **Vite**, **TypeScript**, and **Tailwind CSS**, with UI components powered by **Radix UI** and **shadcn/ui**.  
-It communicates with the backend API for data.
+## React Compiler
 
-### 🚀 Tech Stack
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-- **React 19 + Vite 7** – Fast, modern frontend tooling  
-- **TypeScript** – Type safety for cleaner, more reliable code  
-- **Tailwind CSS** – Utility-first styling  
-- **Radix UI / shadcn/ui** – Accessible, composable UI components  
-- **Axios** – HTTP client for API calls  
-- **React Hook Form** – Forms and validation  
-- **Recharts** – Data visualization  
-- **Lucide Icons** – Clean and lightweight icon set  
+## Expanding the ESLint configuration
 
-### ⚙️ Setup
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-#### 1. Navigate to frontend folder
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-```bash
-cd frontend
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-#### 2. Install dependencies
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-```bash
-npm install
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-#### 3. Create environment file
-
-Create `.env` in `frontend`:
-
-```bash
-VITE_API_URL=http://localhost:5000
-```
-
-#### 4. Run development server
-
-```bash
-npm run dev
-```
-
-Then open:  
-👉 http://localhost:5173
-
-#### 5. Build for production
-
-```bash
-npm run build
-npm run preview
-```
-
-#### 6. Linting
-
-```bash
-npm run lint
-```
-
----
-
-## 🌱 Backend (Node.js + Express + PostgreSQL)
-
-The **backend** is a REST API built using **Express**, with **PostgreSQL** as the database.  
-It handles data storage, API routing, and business logic for the Greenhouse project.
-
-### 🛠️ Tech Stack
-
-- **Node.js + Express** – Web server and routing  
-- **PostgreSQL** – Database  
-- **pg** – PostgreSQL client  
-- **dotenv** – Environment variable management  
-- **CORS** – Cross-origin resource sharing  
-
-### ⚙️ Setup
-
-#### 1. Navigate to backend folder
-
-```bash
-cd greenhouse-backend
-```
-
-#### 2. Install dependencies
-
-```bash
-npm install
-```
-
-#### 3. Create environment file
-
-Create a `.env` file in the `greenhouse-backend` directory:
-
-```bash
-PORT=5000
-DATABASE_URL=postgres://user:password@localhost:5432/greenhouse
-```
-
-#### 4. Run development server
-
-```bash
-npm run dev
-```
-
-Backend runs at:  
-👉 http://localhost:5000
-
-#### 5. Start production server
-
-```bash
-npm start
-```
-
----
-
-## 🔗 Connecting Frontend & Backend
-
-The frontend communicates with the backend via the `VITE_API_URL` environment variable.  
-Make sure the backend server is running **before** starting the frontend.
-
-Example setup:
-
-```
-Backend → http://localhost:5000
-Frontend → http://localhost:5173
-```
-
----
-
-## 🧩 Useful Commands
-
-| Command | Description |
-|----------|--------------|
-| `npm run dev` | Start development mode |
-| `npm run build` | Build frontend for production |
-| `npm run preview` | Preview frontend production build |
-| `npm run lint` | Lint frontend code |
-| `npm start` | Start backend server (production) |
-
----
-
-## 🪴 Author & License
-
-Created by the **Greenhouse Dev Team**  
-License: **MIT**

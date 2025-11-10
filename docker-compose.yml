@@ -107,7 +107,7 @@ services:
 
 networks:
   gardenaway-network:
-    driver: bridge
+    driver: bridge 
 
 volumes:
   postgres-data:

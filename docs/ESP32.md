@@ -22,7 +22,7 @@ For database schema details, see [DATABASE.md](DATABASE.md). For API interaction
 | **Microcontroller** | ESP32 DevKit CH340 |
 | **Temperature/Humidity** | DHT11 |
 | **Light Sensor** | VCNL4010 |
-| **Water Level Sensor** | VS804-021 |
+| **Water Level Sensor** | VS804-021 |1\
 | **Relays** | 4-channel (pump, heating, LED, fan) |
 
 ### Actuators (via Relays)

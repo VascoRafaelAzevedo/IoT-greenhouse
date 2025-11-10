@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1",
+    "name": "Greenhouse Alpha",
+    "plant": "Tomatoes",
+    "isOnline": true,
+    "temperature": 22,
+    "humidity": 65,
+    "waterLevel": 85,
+    "soilHumidity": 75,
+    "lighting": 90
+  },
+  {
+    "id": "2",
+    "name": "Greenhouse Beta",
+    "plant": "Lettuce",
+    "isOnline": true,
+    "temperature": 18,
+    "humidity": 58,
+    "waterLevel": 70,
+    "soilHumidity": 70,
+    "lighting": 70
+  },
+  {
+    "id": "6f2e4209-6de9-4f85-8252-8b3606649f71",
+    "name": "df",
+    "plant": "Tomatoes",
+    "temperature": 23,
+    "humidity": 70,
+    "waterLevel": 80,
+    "soilHumidity": 70,
+    "lighting": 90,
+    "isOnline": true
+  },
+  {
+    "id": "6b38257b-9955-4237-9dae-1ed6b18d3db1",
+    "name": "Hello",
+    "plant": "Tomatoes",
+    "temperature": 23,
+    "humidity": 70,
+    "waterLevel": 80,
+    "soilHumidity": 70,
+    "lighting": 90,
+    "isOnline": true
+  }
+]

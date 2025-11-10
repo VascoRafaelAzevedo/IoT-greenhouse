@@ -38,34 +38,25 @@ services:
     networks:
       - gardenaway-network
 
-  api:
+  backend:
     build:
       context: ./api
       dockerfile: Dockerfile
-    image: gardenaway-api:local
-    container_name: gardenaway-api
+    image: gardenaway-backend:local
+    container_name: gardenaway-backend
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-      mosquitto:
-        condition: service_started
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      SECRET_KEY: ${API_SECRET_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRY_DAYS: ${JWT_EXPIRY_DAYS:-30}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      MQTT_HOST: mosquitto
-      MQTT_PORT: 1883
+      PORT: 4000
+      USE_MOCK_DB: ${USE_MOCK_DB:-true}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      NODE_ENV: ${ENVIRONMENT:-production}
+    volumes:
+      - ./data:/data:ro
     ports:
-      - "${API_PORT:-5000}:5000"
+      - "${API_PORT:-4000}:4000"
     networks:
       - gardenaway-network
 
@@ -99,7 +90,7 @@ services:
     container_name: gardenaway-frontend
     restart: unless-stopped
     depends_on:
-      - api
+      - backend
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     networks:

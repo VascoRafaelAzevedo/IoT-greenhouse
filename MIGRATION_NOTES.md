@@ -74,41 +74,25 @@
 - [x] **Phase 4** - Create Dockerfiles ✅
   - Created `api/Dockerfile` (Node.js 20 Alpine, non-root user, dumb-init)
   - Created `frontend/Dockerfile` (Multi-stage: build with Node, serve with Nginx)
-  - Created `frontend/nginx.conf` (Proxy /api and direct routes to backend, serve React SPA)
+  - Created `frontend/nginx.conf` (Proxy /api to backend, serve React SPA)
   - Created `.dockerignore` files for both api/ and frontend/
   - Updated `docker-compose.yml`:
     - Renamed `api` service to `backend`
-    - Added `data/` volume mount to `/data` (read-only)
+    - Added `data/` volume mount (read-only)
     - Updated environment variables for new structure
     - Frontend depends on backend (not old api service)
-
-- [x] **Phase 5** - Test Docker containers ✅ **COMPLETE**
-  - Fixed TypeScript compilation errors (exported AppSettings, disabled noUnusedLocals)
-  - Fixed Nginx Dockerfile (removed duplicate user creation)
-  - Fixed nginx.conf to proxy `/greenhouses`, `/plants`, `/settings` routes
-  - Tested backend container: ✅ Working with PostgreSQL
-  - Tested frontend container: ✅ Working with Nginx
-  - **Full stack tested and working!**
-    - Backend: http://localhost:5000 (port mapped from API_PORT in .env)
-    - Frontend: http://localhost:3000
-    - Mock data mode working correctly
-    - Frontend communicating with backend successfully
 
 ---
 
 ## 📋 Next Steps
 
-- [ ] **Phase 6** - Update CI/CD pipeline (.github/workflows/ci.yml)
-  - Remove Python API tests
-  - Add Node.js backend tests
-  - Add React frontend build tests
-  - Update service names (api → backend)
-  - Update health checks for new ports
+- [ ] **Phase 5** - Test Docker containers
+  - Build and run with docker compose
+  - Verify backend connects to PostgreSQL
+  - Verify frontend serves and proxies to backend
+  - Test full stack integration
   
-- [ ] **Phase 7** - Cleanup
-  - Delete `api.flask_backup/` folder
-  - Delete `frontend.old_structure/` folder
-  - Update documentation
+- [ ] **Phase 6** - Update CI/CD pipeline (.github/workflows/ci.yml)
 - [ ] **Phase 4** - Create Dockerfiles
 - [ ] **Phase 5** - Update docker-compose.yml
 - [ ] **Phase 6** - Update CI/CD pipeline

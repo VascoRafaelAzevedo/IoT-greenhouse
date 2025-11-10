@@ -1,6 +1,9 @@
 import type { AppSettings } from '../types/types';
 
-const API_URL = import.meta.env.VITE_API_URL || ''; 
+// Re-export AppSettings for convenience
+export type { AppSettings } from '../types/types';
+
+const API_URL = (import.meta as any).env?.VITE_API_URL || ''; 
 
 export const settingsService = {
   async getSettings(): Promise<AppSettings> {

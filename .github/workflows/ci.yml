@@ -17,7 +17,7 @@ jobs:
       USE_MOCK_DB: false
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_NAME: greenhouse_test
+      DB_NAME: greenhouse
       DB_NAME_TEST: greenhouse_test
       ENVIRONMENT: test
     steps:
@@ -30,9 +30,8 @@ jobs:
       - name: Copy and configure env for testing
         run: |
           cp .env.example .env
-          # Override with test database
-          echo "DB_NAME=greenhouse_test" >> .env
-          echo "DB_NAME_TEST=greenhouse_test" >> .env
+          # Keep DB_NAME=greenhouse (for init scripts to work correctly)
+          # Backend will use greenhouse_test via docker-compose.dev.yml override
           echo "USE_MOCK_DB=false" >> .env
           echo "VITE_API_URL=http://localhost:4000" >> .env
           cat .env

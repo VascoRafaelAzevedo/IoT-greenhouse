@@ -5,15 +5,16 @@ services:
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
-      # Ensure backend uses test database
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-greenhouse_test}
+      # CI uses test database (greenhouse_test)
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/greenhouse_test
     # NO volume mounts in CI - use built code
     # For local dev, use docker-compose.local.yml
 
   consumer:
     environment:
       RUST_LOG: ${RUST_LOG:-debug}
-      DB_NAME: ${DB_NAME:-greenhouse_test}
+      # CI uses test database (greenhouse_test)
+      DB_NAME: greenhouse_test
     # NO volume mounts in CI - use built binary
 
   frontend:

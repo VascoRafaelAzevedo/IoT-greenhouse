@@ -5,6 +5,9 @@ import { dbService } from "./services/dbService.js";
 import greenhouseRoutes from "./routes/greenhouseRoutes.js";
 import plantRoutes from "./routes/plantRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
+import authDbRoutes from "./routes/authDbRoutes.js";
+import greenhouseDbRoutes from "./routes/greenhouseDbRoutes.js";
+import plantDbRoutes from "./routes/plantsDbRoutes.js";
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -15,8 +18,9 @@ app.use(express.json());
 await dbService.connect();
 
 // Routes
-app.use("/greenhouses", greenhouseRoutes);
-app.use("/plants", plantRoutes);
+app.use("/auth", authDbRoutes);
+app.use("/greenhouses", greenhouseDbRoutes);
+app.use("/plants", plantDbRoutes);
 app.use("/settings", settingsRoutes);
 
 // Root route

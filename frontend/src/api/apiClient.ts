@@ -1,19 +1,22 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-const API_URL = import.meta.env.VITE_API_URL || ''; // Replace with your real endpoint
 export const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 8000,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Example interceptor (optional)
+// Attach token dynamically for every request
 apiClient.interceptors.request.use(
   (config) => {
-    // You could inject an auth token here:
-    // const token = localStorage.getItem('token');
-    // if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = localStorage.getItem('token');
+    console.log(token) 
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)

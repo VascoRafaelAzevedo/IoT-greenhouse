@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { Progress } from './ui/progress';
 import { Slider } from './ui/slider';
-import { Label } from './ui/label';
 import { ParameterDialog } from './ParameterDialog';
 import type { Greenhouse, Plant } from '../types/types';
-import { greenhouseService } from '../api/greenhouseService';
+import { dataService } from '../api/apiService';
 import {
   ArrowLeft,
   Thermometer,
@@ -29,7 +30,7 @@ interface GreenhouseDetailProps {
   onUpdate: (updates: Partial<Greenhouse>) => void;
 }
 
-type ParameterType = 'temperature' | 'humidity' | 'waterLevel' | 'soilHumidity' | 'lighting';
+type ParameterType = 'temperature' | 'humidity' | 'lighting';
 
 interface ParameterCardData {
   type: ParameterType;
@@ -42,37 +43,33 @@ interface ParameterCardData {
   optimal?: { min: number; max: number };
 }
 
-export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack, onUpdate }: GreenhouseDetailProps) {
+export function GreenhouseDetail({
+  greenhouse: initialGreenhouse,
+  plant,
+  onBack,
+  onUpdate,
+}: GreenhouseDetailProps) {
   const [greenhouse, setGreenhouse] = useState(initialGreenhouse);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState(initialGreenhouse.name || initialGreenhouse.id);
   const [selectedParameter, setSelectedParameter] = useState<ParameterType | null>(null);
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
-  const [manualControls, setManualControls] = useState({
-    temperature: greenhouse.temperature,
-    humidity: greenhouse.humidity,
-    waterLevel: greenhouse.waterLevel,
-    soilHumidity: greenhouse.soilHumidity,
-    lighting: greenhouse.lighting,
-  });
+  const [setpoints, setSetpoints] = useState(initialGreenhouse.setpoint);
   const [historyData, setHistoryData] = useState<{ time: string; value: number }[] | null>(null);
 
-  // Load live data from backend (or mock)
+  // Load live data from backend
   useEffect(() => {
     (async () => {
       try {
-        const data = await greenhouseService.getGreenhouse(greenhouse.id);
+        const data = await dataService.getGreenhouse(initialGreenhouse.id);
         setGreenhouse(data);
-        setManualControls({
-          temperature: data.temperature,
-          humidity: data.humidity,
-          waterLevel: data.waterLevel,
-          soilHumidity: data.soilHumidity,
-          lighting: data.lighting,
-        });
+        setSetpoints(data.setpoint);
+        setNewName(data.name || data.id);
       } catch (err) {
         console.error('Failed to load greenhouse:', err);
       }
     })();
-  }, [greenhouse.id]);
+  }, [initialGreenhouse.id]);
 
   const parameters: ParameterCardData[] = [
     {
@@ -83,7 +80,9 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
       icon: Thermometer,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      optimal: plant?.optimalTemperature,
+      optimal: setpoints?.target_temp_min && setpoints?.target_temp_max
+        ? { min: setpoints.target_temp_min, max: setpoints.target_temp_max }
+        : undefined,
     },
     {
       type: 'humidity',
@@ -93,37 +92,21 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
       icon: Droplets,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      optimal: plant?.optimalHumidity,
-    },
-    {
-      type: 'waterLevel',
-      title: 'Water Level',
-      value: greenhouse.waterLevel,
-      unit: '%',
-      icon: Droplets,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-50',
-      optimal: plant?.optimalWaterLevel,
-    },
-    {
-      type: 'soilHumidity',
-      title: 'Soil Moisture',
-      value: greenhouse.soilHumidity,
-      unit: '%',
-      icon: Beaker,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      optimal: plant?.optimalSoilHumidity,
+      optimal: setpoints?.target_hum_air_max
+        ? { min: setpoints.target_hum_air_max - 5, max: setpoints.target_hum_air_max }
+        : undefined,
     },
     {
       type: 'lighting',
       title: 'Lighting',
       value: greenhouse.lighting,
-      unit: '%',
+      unit: 'lux',
       icon: Sun,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
-      optimal: plant?.optimalLighting,
+      optimal: setpoints?.target_light_intensity
+        ? { min: setpoints.target_light_intensity - 10, max: setpoints.target_light_intensity }
+        : undefined,
     },
   ];
 
@@ -133,36 +116,36 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
   const handleParameterClick = async (paramType: ParameterType) => {
     setSelectedParameter(paramType);
     try {
-      const data = await greenhouseService.getParameterHistory(greenhouse.id, paramType);
+      const data = await dataService.getParameterHistory(greenhouse.id, paramType);
       setHistoryData(data);
     } catch (err) {
       console.error('Failed to load history:', err);
     }
   };
 
-  const handleControlUpdate = (param: ParameterType, value: number[]) => {
-    setManualControls(prev => ({ ...prev, [param]: value[0] }));
+  const handleSetpointChange = (field: keyof typeof setpoints, value: number) => {
+    setSetpoints(prev => ({ ...prev, [field]: value }));
   };
 
   const applyChanges = async () => {
     try {
-      const updated = await greenhouseService.updateGreenhouse(greenhouse.id, manualControls);
+      const updates = {
+        name: newName,
+        setpoint: setpoints,
+      };
+      const updated = await dataService.updateGreenhouse(greenhouse.id, updates);
       setGreenhouse(updated);
-      onUpdate(manualControls);
+      onUpdate(updates);
       setControlPanelOpen(false);
+      setEditingName(false);
     } catch (err) {
       console.error('Failed to apply changes:', err);
     }
   };
 
   const resetControls = () => {
-    setManualControls({
-      temperature: greenhouse.temperature,
-      humidity: greenhouse.humidity,
-      waterLevel: greenhouse.waterLevel,
-      soilHumidity: greenhouse.soilHumidity,
-      lighting: greenhouse.lighting,
-    });
+    setSetpoints(greenhouse.setpoint);
+    setNewName(greenhouse.name || greenhouse.id);
   };
 
   return (
@@ -176,7 +159,23 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
           </Button>
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-green-800">{greenhouse.name}</h2>
+              {editingName ? (
+                <Input
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  className="w-56 border-green-300 focus:border-green-500"
+                />
+              ) : (
+                <h2 className="text-green-800">{greenhouse.name || greenhouse.id}</h2>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-green-700 border-green-200 hover:bg-green-50"
+                onClick={() => setEditingName(!editingName)}
+              >
+                {editingName ? 'Done' : 'Edit'}
+              </Button>
               <Badge
                 variant={greenhouse.isOnline ? 'default' : 'destructive'}
                 className={greenhouse.isOnline ? 'bg-green-100 text-green-800' : ''}
@@ -203,44 +202,96 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
           className="text-green-700 border-green-200 hover:bg-green-50"
         >
           <Settings className="w-4 h-4 mr-2" />
-          Manual Controls
+          Control Parameters
         </Button>
       </div>
 
-      {/* Manual Controls */}
+      {/* Manual Control Panel for Setpoints */}
       {controlPanelOpen && (
         <Card className="border-green-200">
           <CardHeader>
             <CardTitle className="text-green-800 flex items-center">
               <Settings className="w-5 h-5 mr-2" />
-              Manual Controls
+              Manual Setpoint Control
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {parameters.map(param => (
-                <div key={param.type} className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <Label className="text-green-700">{param.title}</Label>
-                    <span className="text-sm font-medium">
-                      {manualControls[param.type]}{param.unit}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[manualControls[param.type]]}
-                    onValueChange={v => handleControlUpdate(param.type, v)}
-                    max={param.type === 'temperature' ? 35 : 100}
-                    min={param.type === 'temperature' ? 10 : 0}
-                    step={1}
-                    className="w-full"
-                  />
-                  {param.optimal && (
-                    <p className="text-xs text-green-600">
-                      Optimal: {param.optimal.min}-{param.optimal.max}{param.unit}
-                    </p>
-                  )}
-                </div>
-              ))}
+            {/* Temperature */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Temperature Min (°C)</Label>
+                <Slider
+                  value={[setpoints.target_temp_min]}
+                  onValueChange={([v]) => handleSetpointChange('target_temp_min', v)}
+                  min={10}
+                  max={40}
+                  step={1}
+                />
+                <p className="text-sm text-gray-600 mt-1">{setpoints.target_temp_min}°C</p>
+              </div>
+              <div>
+                <Label>Temperature Max (°C)</Label>
+                <Slider
+                  value={[setpoints.target_temp_max]}
+                  onValueChange={([v]) => handleSetpointChange('target_temp_max', v)}
+                  min={10}
+                  max={40}
+                  step={1}
+                />
+                <p className="text-sm text-gray-600 mt-1">{setpoints.target_temp_max}°C</p>
+              </div>
+            </div>
+
+            {/* Humidity */}
+            <div>
+              <Label>Max Air Humidity (%)</Label>
+              <Slider
+                value={[setpoints.target_hum_air_max]}
+                onValueChange={([v]) => handleSetpointChange('target_hum_air_max', v)}
+                min={30}
+                max={100}
+                step={1}
+              />
+              <p className="text-sm text-gray-600 mt-1">{setpoints.target_hum_air_max}%</p>
+            </div>
+
+            {/* Irrigation */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Irrigation Interval (min)</Label>
+                <Slider
+                  value={[setpoints.irrigation_interval_minutes]}
+                  onValueChange={([v]) => handleSetpointChange('irrigation_interval_minutes', v)}
+                  min={30}
+                  max={300}
+                  step={10}
+                />
+                <p className="text-sm text-gray-600 mt-1">{setpoints.irrigation_interval_minutes} min</p>
+              </div>
+              <div>
+                <Label>Irrigation Duration (s)</Label>
+                <Slider
+                  value={[setpoints.irrigation_duration_seconds]}
+                  onValueChange={([v]) => handleSetpointChange('irrigation_duration_seconds', v)}
+                  min={5}
+                  max={120}
+                  step={5}
+                />
+                <p className="text-sm text-gray-600 mt-1">{setpoints.irrigation_duration_seconds} sec</p>
+              </div>
+            </div>
+
+            {/* Lighting */}
+            <div>
+              <Label>Target Light Intensity (lux)</Label>
+              <Slider
+                value={[setpoints.target_light_intensity]}
+                onValueChange={([v]) => handleSetpointChange('target_light_intensity', v)}
+                min={100}
+                max={1000}
+                step={10}
+              />
+              <p className="text-sm text-gray-600 mt-1">{setpoints.target_light_intensity} lux</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
@@ -258,7 +309,7 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
         </Card>
       )}
 
-      {/* Parameter Cards */}
+      {/* Existing parameter cards remain unchanged */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {parameters.map(param => {
           const isInRange = isParameterInRange(param);
@@ -301,14 +352,24 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
                         </span>
                       </div>
                       <Progress
-                        value={Math.min(100, Math.max(0, ((param.value - param.optimal.min) / (param.optimal.max - param.optimal.min)) * 100))}
+                        value={Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            ((param.value - param.optimal.min) /
+                              (param.optimal.max - param.optimal.min)) *
+                              100
+                          )
+                        )}
                         className="h-2"
                       />
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <Badge
                         variant={isInRange ? 'default' : 'destructive'}
-                        className={`text-xs ${isInRange ? 'bg-green-100 text-green-800' : ''}`}
+                        className={`text-xs ${
+                          isInRange ? 'bg-green-100 text-green-800' : ''
+                        }`}
                       >
                         {isInRange ? 'In Range' : 'Out of Range'}
                       </Badge>
@@ -326,7 +387,7 @@ export function GreenhouseDetail({ greenhouse: initialGreenhouse, plant, onBack,
         })}
       </div>
 
-      {/* Parameter History Dialog */}
+      {/* History Dialog */}
       {selectedParameter && historyData && (
         <ParameterDialog
           parameter={parameters.find(p => p.type === selectedParameter)!}

@@ -30,14 +30,13 @@ function formatTimeAgo(date: Date) {
 
 interface DashboardProps {
   greenhouses: Greenhouse[];
-  onAddGreenhouse: () => void;
   onSelectGreenhouse: (id: string) => void;
   onDeleteGreenhouse: (id: string) => void;
   lastUpdated?: Date | null;
 }
 
 
-export function Dashboard({ greenhouses, onAddGreenhouse, onSelectGreenhouse, onDeleteGreenhouse ,lastUpdated}: DashboardProps) {
+export function Dashboard({ greenhouses, onSelectGreenhouse, onDeleteGreenhouse ,lastUpdated}: DashboardProps) {
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -51,13 +50,7 @@ export function Dashboard({ greenhouses, onAddGreenhouse, onSelectGreenhouse, on
           </p>
         )}  
         </div>
-        <Button 
-          onClick={onAddGreenhouse}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Greenhouse
-        </Button>
+        
       </div>
 
       {/* Greenhouses Grid */}
@@ -71,13 +64,7 @@ export function Dashboard({ greenhouses, onAddGreenhouse, onSelectGreenhouse, on
             <p className="text-green-600 mb-6 max-w-md">
               Get started by adding your first greenhouse to begin monitoring your plants.
             </p>
-            <Button 
-              onClick={onAddGreenhouse}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Greenhouse
-            </Button>
+            
           </CardContent>
         </Card>
       ) : (

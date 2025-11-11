@@ -1,167 +1,347 @@
-// greenhouseRoutes.js
 import express from 'express';
-import { query, getClient } from './postgresDbService.js';
-
+import { query, getClient } from '../services/postgresDbService.js';
+import { authenticateToken } from './authMiddleware.js';
 const router = express.Router();
+const ONLINE_THRESHOLD_MINUTES = 10;
+// Create greenhouse (copy plant parameters into setpoint)
+router.post("/", authenticateToken,async (req, res) => {
+  const { name, plant, owner_id } = req.body;
 
-// 📦 Create greenhouse (copy plant parameters into setpoint)
-router.post('/', async (req, res) => {
-  const { owner_id, plant_id, name } = req.body;
-
-  if (!owner_id || !plant_id || !name) {
-    return res.status(400).json({ error: 'Missing owner_id, plant_id or name' });
+  if (!name || !plant || !owner_id) {
+    return res.status(400).json({
+      error: "Missing required fields: name, plant, owner_id"
+    });
   }
 
   const client = await getClient();
+
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
+
+    // Find plant by name
+    const plantQuery = `SELECT * FROM plants WHERE plant_name = $1;`;
+    const { rows: plantRows } = await client.query(plantQuery, [plant]);
+
+    if (plantRows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: `Plant '${plant}' not found` });
+    }
+
+    const p = plantRows[0];
 
     // Create greenhouse
-    const ghRes = await client.query(
-      `INSERT INTO greenhouse (owner_id, name)
-       VALUES ($1, $2)
-       RETURNING id, owner_id, name, created_at`,
-      [owner_id, name]
-    );
-    const greenhouse = ghRes.rows[0];
+    const insertGreenhouse = `
+      INSERT INTO greenhouse (owner_id, name)
+      VALUES ($1, $2)
+      RETURNING id, name, created_at;
+    `;
+    const { rows: ghRows } = await client.query(insertGreenhouse, [owner_id, name]);
+    const greenhouse = ghRows[0];
 
-    // Copy plant parameters into setpoint
-    await client.query(
-      `INSERT INTO setpoint (greenhouse_id, target_temp_min, target_temp_max, target_hum_air_min,
-        target_hum_air_max, irrigation_interval_minutes, irrigation_duration_seconds, target_light_intensity)
-       SELECT $1, p.target_temp_min, p.target_temp_max, p.target_hum_air_min, p.target_hum_air_max,
-              p.irrigation_interval_minutes, p.irrigation_duration_seconds, p.target_light_intensity
-       FROM plants p WHERE p.plant_it = $2`,
-      [greenhouse.id, plant_id]
-    );
+    // Create corresponding setpoint from plant template
+    const insertSetpoint = `
+      INSERT INTO setpoint (
+        greenhouse_id,
+        target_temp_min,
+        target_temp_max,
+        target_hum_air_max,
+        irrigation_interval_minutes,
+        irrigation_duration_seconds,
+        target_light_intensity,
+        plant
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *;
+    `;
+    const { rows: spRows } = await client.query(insertSetpoint, [
+      greenhouse.id,
+      p.target_temp_min,
+      p.target_temp_max,
+      p.target_hum_air_max,
+      p.irrigation_interval_minutes,
+      p.irrigation_duration_seconds,
+      p.target_light_intensity,
+      p.plant_name
+    ]);
 
-    await client.query('COMMIT');
-    res.status(201).json(greenhouse);
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Error creating greenhouse:', err);
-    res.status(500).json({ error: 'Failed to create greenhouse' });
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      message: "Greenhouse created successfully",
+      greenhouse: {
+        id: greenhouse.id,
+        name: greenhouse.name,
+        owner_id,
+        created_at: greenhouse.created_at
+      },
+      setpoint: spRows[0]
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error creating greenhouse:", error);
+    res.status(500).json({ error: "Internal server error" });
   } finally {
     client.release();
   }
 });
 
-// 🌱 Get all greenhouses of a user
-router.get('/user/:userId', async (req, res) => {
-  const { userId } = req.params;
+// Get all greenhouses of a user
+router.get("/", authenticateToken,async (req, res) => {
   try {
-    const { rows } = await query(
-      'SELECT * FROM greenhouse WHERE owner_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to get greenhouses' });
+    const query = `
+      SELECT 
+        g.id,
+        g.name,
+        g.last_seen,
+        s.plant_name AS plant,
+        t.temp_air AS temperature,
+        t.hum_air AS humidity,
+        t.water_level_ok AS "waterLevel",
+        t.light_intensity AS lighting,
+        t.last_time
+      FROM greenhouse g
+      LEFT JOIN setpoint s ON s.greenhouse_id = g.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (greenhouse_id)
+          greenhouse_id,
+          temp_air,
+          hum_air,
+          lux,
+          light_intensity,
+          water_level_ok,
+          time AS last_time
+        FROM telemetry
+        ORDER BY greenhouse_id, time DESC
+      ) t ON g.id = t.greenhouse_id
+      ORDER BY g.created_at DESC;
+    `;
+    const client = await getClient();
+    const { rows } = await client.query(query);
+    const now = new Date();
+
+    const result = rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      plant: r.plant || null,
+      temperature: r.temperature,
+      humidity: r.humidity,
+      waterLevel: r.waterLevel,
+      lighting: r.lighting,
+      isOnline:
+        r.last_time &&
+        (now - new Date(r.last_time)) / 60000 < ONLINE_THRESHOLD_MINUTES
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching greenhouses:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// 🌿 Get single greenhouse + last telemetry + setpoint + last connection
-router.get('/:id', async (req, res) => {
+
+//Get single greenhouse + last telemetry + setpoint + last connection
+router.get("/:id", authenticateToken,async (req, res) => {
   const { id } = req.params;
   try {
-    const ghRes = await query('SELECT * FROM greenhouse WHERE id = $1', [id]);
-    if (ghRes.rowCount === 0) return res.status(404).json({ error: 'Not found' });
+    const query = `
+      SELECT 
+        g.id,
+        g.name,
+        g.last_seen,
+        s.plant_name AS plant,
+        s.target_temp_min,
+        s.target_temp_max,
+        s.target_hum_air_max,
+        s.irrigation_interval_minutes,
+        s.irrigation_duration_seconds,
+        s.target_light_intensity,
+        t.temp_air AS temperature,
+        t.hum_air AS humidity,
+        t.water_level_ok AS waterLevel,
+        t.light_intensity AS lighting,
+        t.time AS last_time
+      FROM greenhouse g
+      LEFT JOIN setpoint s ON s.greenhouse_id = g.id
+      LEFT JOIN LATERAL (
+        SELECT 
+          temp_air,
+          hum_air,
+          lux,
+          light_intensity,
+          water_level_ok,
+          time
+        FROM telemetry
+        WHERE telemetry.greenhouse_id = g.id
+        ORDER BY time DESC
+        LIMIT 1
+      ) t ON TRUE
+      WHERE g.id = $1;
+    `;
+    const client = await getClient();
+    const { rows } = await client.query(query, [id]);
 
-    const setpoint = (await query('SELECT * FROM setpoint WHERE greenhouse_id = $1', [id])).rows[0];
-    const lastTelemetry = (
-      await query(
-        'SELECT * FROM telemetry WHERE greenhouse_id = $1 ORDER BY time DESC LIMIT 1',
-        [id]
-      )
-    ).rows[0];
-    const lastEvent = (
-      await query(
-        'SELECT * FROM connection_event WHERE greenhouse_id = $1 ORDER BY end_ts DESC LIMIT 1',
-        [id]
-      )
-    ).rows[0];
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Greenhouse not found" });
+    }
 
-    res.json({
-      greenhouse: ghRes.rows[0],
-      setpoint,
-      lastTelemetry,
-      lastEvent,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to get greenhouse' });
+    const r = rows[0];
+    const now = new Date();
+    const isOnline =
+      r.last_time &&
+      (now - new Date(r.last_time)) / 60000 < ONLINE_THRESHOLD_MINUTES;
+
+    const result = {
+      id: r.id,
+      name: r.name,
+      plant: r.plant,
+      isOnline,
+      temperature: r.temperature,
+      humidity: r.humidity,
+      waterLevel: r.waterLevel,
+      lighting: r.lighting,
+      lastTelemetryAt: r.last_time,
+      setpoint: {
+        target_temp_min: r.target_temp_min,
+        target_temp_max: r.target_temp_max,
+        target_hum_air_max: r.target_hum_air_max,
+        irrigation_interval_minutes: r.irrigation_interval_minutes,
+        irrigation_duration_seconds: r.irrigation_duration_seconds,
+        target_light_intensity: r.target_light_intensity
+      }
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching greenhouse by ID:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// 🌤 Get last 30 telemetry points
-router.get('/:id/telemetry', async (req, res) => {
+const PARAM_MAP = {
+  temperature: "temp_air",
+  humidity: "hum_air",
+  lighting: "light_intensity",
+  lux: "lux",
+  waterLevel: "water_level_ok",
+  lightOn: "light_on",
+  pumpOn: "pump_on"
+};
+
+//Get last 30 telemetry points
+router.get("/:id/history", authenticateToken,async (req, res) => {
   const { id } = req.params;
+  const { parameter } = req.query;
+
   try {
-    const { rows } = await query(
-      'SELECT * FROM telemetry WHERE greenhouse_id = $1 ORDER BY time DESC LIMIT 30',
-      [id]
-    );
-    res.json(rows.reverse()); // reverse to get oldest→newest for graph
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to get telemetry history' });
+    // Validate parameter
+    const column = PARAM_MAP[parameter];
+    if (!column) {
+      return res.status(400).json({
+        error: `Invalid parameter. Allowed: ${Object.keys(PARAM_MAP).join(", ")}`
+      });
+    }
+
+    const query = `
+      SELECT time, ${column} AS value
+      FROM telemetry
+      WHERE greenhouse_id = $1
+      ORDER BY time DESC
+      LIMIT 30;
+    `;
+    const client = await getClient();
+    const { rows } = await client.query(query, [id]);
+
+    // Reverse to chronological order (oldest first)
+    const result = rows.reverse().map(r => ({
+      time: r.time,
+      value: r.value
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching telemetry history:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// 🧭 Update setpoint values
-router.patch('/:id/setpoint', async (req, res) => {
+//Update setpoint values
+router.patch("/:id/setpoint",authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const fields = [
-    'target_temp_min',
-    'target_temp_max',
-    'target_hum_air_min',
-    'target_hum_air_max',
-    'irrigation_interval_minutes',
-    'irrigation_duration_seconds',
-    'target_light_intensity',
+  const updates = req.body;
+
+  // Allowed columns to update
+  const allowedFields = [
+    "target_temp_min",
+    "target_temp_max",
+    "target_hum_air_max",
+    "irrigation_interval_minutes",
+    "irrigation_duration_seconds",
+    "target_light_intensity",
+    "plant"
   ];
 
-  const updates = [];
-  const values = [];
-  let idx = 1;
-  for (const field of fields) {
-    if (req.body[field] !== undefined) {
-      updates.push(`${field} = $${idx++}`);
-      values.push(req.body[field]);
-    }
-  }
+  // Filter only valid fields from body
+  const fields = Object.keys(updates).filter(f => allowedFields.includes(f));
 
-  if (updates.length === 0) {
-    return res.status(400).json({ error: 'No valid fields to update' });
+  if (fields.length === 0) {
+    return res.status(400).json({
+      error: `No valid fields to update. Allowed: ${allowedFields.join(", ")}`
+    });
   }
-
-  values.push(id);
-  const queryText = `
-    UPDATE setpoint
-    SET ${updates.join(', ')}, changed_at = now()
-    WHERE greenhouse_id = $${values.length}
-    RETURNING *;
-  `;
 
   try {
-    const { rows } = await query(queryText, values);
-    res.json(rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to update setpoint' });
+    // Dynamically build the SET clause
+    const setClauses = fields.map(
+      (field, idx) => `${field} = $${idx + 2}` // +2 because $1 is the greenhouse_id
+    );
+    const values = fields.map(f => updates[f]);
+
+    const query = `
+      UPDATE setpoint
+      SET ${setClauses.join(", ")}, changed_at = NOW()
+      WHERE greenhouse_id = $1
+      RETURNING *;
+    `;
+    const client = await getClient();
+    const { rows } = await client.query(query, [id, ...values]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Setpoint not found for this greenhouse" });
+    }
+
+    res.json({
+      message: "Setpoint updated successfully",
+      greenhouse_id: id,
+      updatedFields: fields,
+      updatedValues: rows[0]
+    });
+  } catch (error) {
+    console.error("Error updating setpoint:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// 🗑 Delete greenhouse (cascade removes setpoint, telemetry, etc.)
-router.delete('/:id', async (req, res) => {
+// Delete greenhouse (cascade removes setpoint, telemetry, etc.)
+router.delete("/:id", authenticateToken,async (req, res) => {
   const { id } = req.params;
+
   try {
-    await query('DELETE FROM greenhouse WHERE id = $1', [id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to delete greenhouse' });
+    const query = `DELETE FROM greenhouse WHERE id = $1 RETURNING id, name;`;
+    const client =await getClient();
+    const { rows } = await client.query(query, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Greenhouse not found" });
+    }
+
+    res.json({
+      message: "Greenhouse and related data deleted successfully",
+      deleted: rows[0]
+    });
+  } catch (error) {
+    console.error("Error deleting greenhouse:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

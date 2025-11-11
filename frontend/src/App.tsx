@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './components/Dashboard';
-import { AddGreenhouse } from './components/AddGreenhouse';
 import { GreenhouseDetail } from './components/GreenhouseDetail';
 import { Settings } from './components/Settings';
 import { PlantLibrary } from './components/PlantLibrary';
@@ -9,11 +8,12 @@ import { Toaster, toast } from 'sonner';
 import { Home, Settings as SettingsIcon, Book, Menu, X } from 'lucide-react';
 import { dataService } from './api/apiService';
 import { settingsService } from './api/settingsService';
-import type { Greenhouse, Plant, View , AppSettings} from './types/types';
+import type { Greenhouse, Plant, View, AppSettings } from './types/types';
 import { Loading } from './components/ui/loading';
 import { ErrorState } from './components/ui/error-state';
 import { GlobalLoader } from './components/ui/global-loader';
-
+import { loginService } from './api/loginService';
+import { Auth } from './components/Auth';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -31,6 +31,30 @@ export default function App() {
   // Dark mode / settings
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
 
+  // Login state
+  const [isLoggedIn, setIsLoggedIn] = useState(loginService.isAuthenticated());
+
+  const handleLogin = async ({ username, password }: { username: string; password: string }) => {
+    try {
+      const { token } = await loginService.login(username, password);
+      if (token) {
+        loginService.attachAuthHeader();
+        setIsLoggedIn(true);
+        loadData();
+        loadSettings();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Login failed');
+    }
+  };
+
+  const handleLogout = () => {
+    loginService.logout();
+    setIsLoggedIn(false);
+    setGreenhouses([]);
+    setPlants([]);
+  };
+
   // Load settings
   const loadSettings = async () => {
     try {
@@ -42,39 +66,35 @@ export default function App() {
   };
 
   // Load initial data
-  const loadData = async (silent=false) => {
+  const loadData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-    setError(null);
-    const [ghData, plantData] = await Promise.all([
-      dataService.getGreenhouses(),
-      dataService.getPlants()
-      
-    ]);
-    setGreenhouses(ghData);
-    setPlants(plantData);
-    setLastUpdated(new Date());
-  } catch (err: any) {
-    console.error('Data load error:', err);
-    setError('Failed to load data. Please check your connection or try again.');
-  } finally {
-    if (!silent) setLoading(false);
+      setError(null);
+      const [ghData, plantData] = await Promise.all([
+        dataService.getGreenhouses(),
+        dataService.getPlants(),
+      ]);
+      setGreenhouses(ghData);
+      setPlants(plantData);
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      console.error('Data load error:', err);
+      setError('Failed to load data. Please check your connection or try again.');
+    } finally {
+      if (!silent) setLoading(false);
     }
   };
 
+  // Auto-refresh every 15 seconds (only when logged in)
   useEffect(() => {
-    loadData();
-    loadSettings();
-    // Auto-refresh every 15 seconds
+    if (!isLoggedIn) return;
     const interval = setInterval(() => {
       loadData(true);
-    }, 15000);
-
+    }, 1500000);
     return () => clearInterval(interval);
-    
-  }, []);
+  }, [isLoggedIn]);
 
-  // Apply dark mode class to root
+  // Apply dark mode
   useEffect(() => {
     if (appSettings?.display.darkMode) {
       document.documentElement.classList.add('dark');
@@ -83,50 +103,63 @@ export default function App() {
     }
   }, [appSettings?.display.darkMode]);
 
-  // Alerts
+  // 🌡️ Alerts based on plant optimal values
   useEffect(() => {
-    greenhouses.forEach(greenhouse => {
-      const plant = plants.find(p => p.name === greenhouse.plant);
+    if (!isLoggedIn) return;
+
+    greenhouses.forEach((greenhouse) => {
+      const plant = plants.find((p) => p.name === greenhouse.plant);
       if (!plant || !greenhouse.isOnline) return;
 
-      const alerts = [];
-      if (greenhouse.temperature < plant.optimalTemperature.min || greenhouse.temperature > plant.optimalTemperature.max)
-        alerts.push(`Temperature is ${greenhouse.temperature}°C (optimal: ${plant.optimalTemperature.min}-${plant.optimalTemperature.max}°C)`);
+      const alerts: string[] = [];
 
-      if (greenhouse.waterLevel < plant.optimalWaterLevel.min)
-        alerts.push(`Water level is low at ${greenhouse.waterLevel}%`);
+      // Compare temperature
+      if (
+        greenhouse.temperature < plant.optimalTemperature.min ||
+        greenhouse.temperature > plant.optimalTemperature.max
+      ) {
+        alerts.push(
+          `Temperature ${greenhouse.temperature}°C (optimal: ${plant.optimalTemperature.min}-${plant.optimalTemperature.max}°C)`
+        );
+      }
 
-      if (greenhouse.soilHumidity < plant.optimalSoilHumidity.min)
-        alerts.push(`Soil humidity is low at ${greenhouse.soilHumidity}%`);
+      // Compare humidity (air)
+      if (
+        greenhouse.humidity < plant.optimalHumidity-5 ||
+        greenhouse.humidity > plant.optimalHumidity+5
+      ) {
+        alerts.push(
+          `Humidity ${greenhouse.humidity}% (optimal: ${plant.optimalHumidity-5}-${plant.optimalHumidity+5}%)`
+        );
+      }
 
-      if (alerts.length > 0)
+      // Compare lighting (lux or %)
+      if (
+        greenhouse.lighting < plant.optimalLighting-10 ||
+        greenhouse.lighting > plant.optimalLighting+10
+      ) {
+        alerts.push(
+          `Lighting ${greenhouse.lighting} (optimal: ${plant.optimalLighting-10}-${plant.optimalLighting+10})`
+        );
+      }
+
+      if (alerts.length > 0) {
         toast.error(`${greenhouse.name}: ${alerts[0]}`, {
-          description: alerts.length > 1 ? `+${alerts.length - 1} more issues` : undefined,
-          duration: 8000
+          description:
+            alerts.length > 1 ? `+${alerts.length - 1} more issues` : undefined,
+          duration: 8000,
         });
+      }
     });
-  }, [greenhouses, plants]);
+  }, [greenhouses, plants, isLoggedIn]);
 
   // CRUD Actions
-  const addGreenhouse = async (greenhouse: Omit<Greenhouse, 'id'>) => {
-    setGlobalLoading('Adding greenhouse...');
-    try {
-      const newGH = await dataService.addGreenhouse(greenhouse);
-      setGreenhouses(prev => [...prev, newGH]);
-      setCurrentView('dashboard');
-      toast.success('Greenhouse added!');
-    } catch {
-      toast.error('Failed to add greenhouse');
-    } finally {
-      setGlobalLoading(null);
-    }
-  };
 
   const updateGreenhouse = async (id: string, updates: Partial<Greenhouse>) => {
     setGlobalLoading('Updating greenhouse...');
     try {
       const updated = await dataService.updateGreenhouse(id, updates);
-      setGreenhouses(prev => prev.map(gh => (gh.id === id ? updated : gh)));
+      setGreenhouses((prev) => prev.map((gh) => (gh.id === id ? updated : gh)));
       toast.success('Greenhouse updated');
     } catch {
       toast.error('Failed to update greenhouse');
@@ -139,7 +172,7 @@ export default function App() {
     setGlobalLoading('Deleting greenhouse...');
     try {
       await dataService.deleteGreenhouse(id);
-      setGreenhouses(prev => prev.filter(gh => gh.id !== id));
+      setGreenhouses((prev) => prev.filter((gh) => gh.id !== id));
       toast.success('Greenhouse removed');
     } catch {
       toast.error('Failed to delete greenhouse');
@@ -148,10 +181,10 @@ export default function App() {
     }
   };
 
-  const selectedGH = greenhouses.find(g => g.id === selectedGreenhouseId);
+  const selectedGH = greenhouses.find((g) => g.id === selectedGreenhouseId);
 
   const renderContent = () => {
-    if (loading) return <Loading />;
+    //if (loading) return <Loading />;
     if (error) return <ErrorState message={error} onRetry={loadData} />;
 
     switch (currentView) {
@@ -159,8 +192,7 @@ export default function App() {
         return (
           <Dashboard
             greenhouses={greenhouses}
-            onAddGreenhouse={() => setCurrentView('add-greenhouse')}
-            onSelectGreenhouse={id => {
+            onSelectGreenhouse={(id) => {
               setSelectedGreenhouseId(id);
               setCurrentView('greenhouse-detail');
             }}
@@ -168,21 +200,24 @@ export default function App() {
             lastUpdated={lastUpdated}
           />
         );
-      case 'add-greenhouse':
-        return <AddGreenhouse plants={plants} onAdd={addGreenhouse} onCancel={() => setCurrentView('dashboard')} />;
       case 'greenhouse-detail':
         return selectedGH ? (
           <GreenhouseDetail
             greenhouse={selectedGH}
-            plant={plants.find(p => p.name === selectedGH.plant)}
+            plant={plants.find((p) => p.name === selectedGH.plant)}
             onBack={() => setCurrentView('dashboard')}
-            onUpdate={updates => updateGreenhouse(selectedGH.id, updates)}
+            onUpdate={(updates) => updateGreenhouse(selectedGH.id, updates)}
           />
         ) : null;
       case 'settings':
         return <Settings onBack={() => setCurrentView('dashboard')} />;
       case 'plant-library':
-        return <PlantLibrary plants={plants} onBack={() => setCurrentView('dashboard')} />;
+        return (
+          <PlantLibrary
+            plants={plants}
+            onBack={() => setCurrentView('dashboard')}
+          />
+        );
       default:
         return null;
     }
@@ -191,9 +226,40 @@ export default function App() {
   const navigationItems = [
     { view: 'dashboard' as View, icon: Home, label: 'Dashboard' },
     { view: 'plant-library' as View, icon: Book, label: 'Plant Guide' },
-    { view: 'settings' as View, icon: SettingsIcon, label: 'Settings' }
+    { view: 'settings' as View, icon: SettingsIcon, label: 'Settings' },
   ];
 
+  // 🟢 Show Login first if not authenticated
+if (!isLoggedIn) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 transition-colors">
+      <Auth
+        onLogin={async ({ username, password }) => {
+          const { token } = await loginService.login(username, password);
+          if (token) {
+            loginService.attachAuthHeader();
+            setIsLoggedIn(true);
+
+            await loadData();
+            await loadSettings();
+          }
+        }}
+        onRegister={async ({ username, password, name }) => {
+          const { token } = await loginService.register(username, password, name);
+          if (token) {
+            loginService.attachAuthHeader();
+            setIsLoggedIn(true);
+
+            await loadData();
+            await loadSettings();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+  // Main App after login
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       {/* Header */}
@@ -204,7 +270,9 @@ export default function App() {
               <div className="w-8 h-8 bg-green-600 dark:bg-green-500 rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-white rounded-sm" />
               </div>
-              <h1 className="text-green-800 dark:text-green-400 font-semibold transition-colors duration-300">Garden Away</h1>
+              <h1 className="text-green-800 dark:text-green-400 font-semibold transition-colors duration-300">
+                Garden Away
+              </h1>
             </div>
 
             {/* Desktop nav */}
@@ -224,6 +292,15 @@ export default function App() {
                   {label}
                 </Button>
               ))}
+
+              {/* Logout button */}
+              <Button
+                variant="ghost"
+                className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
             </nav>
 
             {/* Mobile menu toggle */}
@@ -260,16 +337,28 @@ export default function App() {
                   {label}
                 </Button>
               ))}
+
+              {/* Logout (mobile) */}
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
             </div>
           </div>
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{renderContent()}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {renderContent()}
+      </main>
       <Toaster />
       {globalLoading && <GlobalLoader message={globalLoading} />}
     </div>
   );
 }
+
 
 

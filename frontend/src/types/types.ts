@@ -6,18 +6,26 @@ export interface Greenhouse {
   temperature: number;
   humidity: number;
   waterLevel: number;
-  soilHumidity: number;
   lighting: number;
+  setpoint: {
+    target_temp_min: number;
+    target_temp_max: number;
+    target_hum_air_max: number;
+    irrigation_interval_minutes: number;
+    irrigation_duration_seconds: number;
+    target_light_intensity: number; 
+  }
 }
 
 export interface Plant {
   id: string;
   name: string;
-  optimalTemperature: { min: number; max: number };
-  optimalHumidity: { min: number; max: number };
-  optimalWaterLevel: { min: number; max: number };
-  optimalSoilHumidity: { min: number; max: number };
-  optimalLighting: { min: number; max: number };
+  description:string
+  optimalTemperature: {min:number,max:number};
+  optimalHumidity: number;
+  irrigationInterval: number;
+  irrigationDurationSec: number;
+  optimalLighting: number;
 }
 
 export interface AppSettings {

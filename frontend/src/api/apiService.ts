@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import type { Greenhouse, Plant, CreateGreenhouseDTO, UpdateGreenhouseDTO } from '../types/types';
+import type { Greenhouse, Plant, CreateGreenhouseDTO, UpdateGreenhouseDTO, UpdateSetpointDTO } from '../types/types';
 
 export const dataService = {
   async getGreenhouses(): Promise<Greenhouse[]> {
@@ -32,6 +32,10 @@ export const dataService = {
     const res = await apiClient.put<Greenhouse>(`/greenhouses/${id}`, updates);
     return res.data;
   },
+  async updateGreenhouseSetpoint(id: string, setpointUpdates: Partial<UpdateSetpointDTO>): Promise<Greenhouse> {
+  const res = await apiClient.put<Greenhouse>(`/greenhouses/${id}/setpoint`, setpointUpdates);
+  return res.data;
+},
 
   async deleteGreenhouse(id: string): Promise<void> {
     await apiClient.delete(`/greenhouses/${id}`);

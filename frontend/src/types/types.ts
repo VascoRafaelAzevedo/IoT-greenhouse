@@ -28,6 +28,15 @@ export interface Plant {
   optimalLighting: number;
 }
 
+export interface Setpoint {
+        target_temp_min: number;
+        target_temp_max: number;
+        target_hum_air_max: number;
+        irrigation_interval_minutes: number;
+        irrigation_duration_seconds: number;
+        target_light_intensity: number;
+    }
+
 export interface AppSettings {
   notifications: {
     alerts: boolean;
@@ -60,3 +69,4 @@ export type CreateGreenhouseDTO = Omit<Greenhouse, 'id'>;
 
 /** For PATCH/PUT requests */
 export type UpdateGreenhouseDTO = Partial<Greenhouse>;
+export type UpdateSetpointDTO = Partial<Setpoint>;

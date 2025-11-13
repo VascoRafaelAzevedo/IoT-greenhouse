@@ -45,7 +45,6 @@ interface ParameterCardData {
 
 export function GreenhouseDetail({
   greenhouse: initialGreenhouse,
-  plant,
   onBack,
   onUpdate,
 }: GreenhouseDetailProps) {
@@ -129,15 +128,26 @@ export function GreenhouseDetail({
 
   const applyChanges = async () => {
     try {
-      const updates = {
-        name: newName,
-        setpoint: setpoints,
-      };
-      const updated = await dataService.updateGreenhouse(greenhouse.id, updates);
-      setGreenhouse(updated);
-      onUpdate(updates);
-      setControlPanelOpen(false);
-      setEditingName(false);
+      if(newName&&newName!==greenhouse.name){
+        const updates = {
+          name: newName,
+        };
+        const updated = await dataService.updateGreenhouse(greenhouse.id, updates);
+        setGreenhouse(updated);
+        onUpdate(updates);
+        setControlPanelOpen(false);
+        setEditingName(false);
+      }else if (setpoints){
+        const updates = setpoints
+        const updated = await dataService.updateGreenhouseSetpoint(greenhouse.id, updates);
+        setGreenhouse(updated);
+        onUpdate({
+          setpoint: updates,
+        });
+        setControlPanelOpen(false);
+      }
+      console.log(setpoints)
+      
     } catch (err) {
       console.error('Failed to apply changes:', err);
     }

@@ -121,7 +121,7 @@ void controlHeating(float temperature) {
       if (!isHeatingOn()) {
         turnHeatingOn();
       }
-    } else if (temperature >= setpoint_temp_max) {
+    } else if (temperature >= (setpoint_temp_max + setpoint_temp_min) / 2) {
       if (isHeatingOn()) {
         turnHeatingOff();
       }

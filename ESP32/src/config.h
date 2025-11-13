@@ -80,7 +80,7 @@
 // ============================================
 // TIMING CONFIGURATION
 // ============================================
-#define TELEMETRY_INTERVAL_MS 60000  // 60 seconds = 1 minute
-#define DISPLAY_INTERVAL_MS 2000     // 2 seconds
+#define TELEMETRY_INTERVAL_MS 1000  // 60 seconds = 1 minute
+#define DISPLAY_INTERVAL_MS 100     // 2 seconds
 
 #endif // CONFIG_H

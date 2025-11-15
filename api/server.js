@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { dbService } from "./services/dbService.js";
+import { mqttService } from "./services/mqttService.js";
 import greenhouseRoutes from "./routes/greenhouseRoutes.js";
 import plantRoutes from "./routes/plantRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
@@ -16,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 await dbService.connect();
+mqttService.connect();
 
 // Routes
 app.use("/auth", authDbRoutes);

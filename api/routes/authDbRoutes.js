@@ -7,7 +7,7 @@ const router = express.Router();
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // use ssl in prod (common for cloud DBs)
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     })
   : new Pool({
       user: process.env.PGUSER || 'admin',

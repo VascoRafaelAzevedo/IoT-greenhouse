@@ -45,11 +45,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mosquitto:
+        condition: service_started
     environment:
       PORT: ${BACKEND_PORT:-4000}
       USE_MOCK_DB: ${USE_MOCK_DB:-false}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       NODE_ENV: ${ENVIRONMENT:-production}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
     volumes:
       - ./data:/data:ro
     ports:

@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const { rows } = await query('SELECT * FROM plants WHERE plant_it = $1', [id]);
+    const { rows } = await query('SELECT * FROM plants WHERE plant_id = $1', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Plant not found' });
     res.json(rows[0]);
   } catch (err) {

@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-await dbService.connect();
+
 
 // Routes
 app.use("/auth", authDbRoutes);

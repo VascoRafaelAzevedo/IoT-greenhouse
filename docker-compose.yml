@@ -50,6 +50,7 @@ services:
       USE_MOCK_DB: ${USE_MOCK_DB:-false}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       NODE_ENV: ${ENVIRONMENT:-production}
+      JWT_SECRET: veryverycomplicatedsecret
     volumes:
       - ./data:/data:ro
     ports:

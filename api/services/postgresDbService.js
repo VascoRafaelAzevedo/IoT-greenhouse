@@ -1,10 +1,10 @@
 import pkg from 'pg';
 const { Pool } = pkg;
-
+const useSSL = false;
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // use ssl in prod (common for cloud DBs)
+      ssl: useSSL ? { rejectUnauthorized: false } : false,
     })
   : new Pool({
       user: process.env.PGUSER || 'admin',

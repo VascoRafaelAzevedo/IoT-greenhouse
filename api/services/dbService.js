@@ -145,8 +145,7 @@ export const dbService = {
       },
     };
 
-    const allSettings = await this.getAll("appSettings");
-    return allSettings[0] || defaultSettings;
+    return defaultSettings;
   },
   async delete(collection, id) {
     if (USE_MOCK_DB) {

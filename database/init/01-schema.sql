@@ -64,7 +64,7 @@ CREATE TABLE public.setpoint (
 );
 
 CREATE TABLE public.plants (
-    plant_it uuid PRIMARY KEY,  -- unique per plant
+    plant_id uuid PRIMARY KEY,  -- unique per plant
 	plant_name text NOT NULL,
 	plant_descripion text NOT NULL,
     target_temp_min float8 NULL,
@@ -190,7 +190,7 @@ CREATE TABLE public.setpoint (
 );
 
 CREATE TABLE public.plants (
-    plant_it uuid PRIMARY KEY,  -- unique per plant
+    plant_id uuid PRIMARY KEY,  -- unique per plant
 	plant_name text NOT NULL,
 	plant_descripion text NOT NULL,
     target_temp_min float8 NULL,

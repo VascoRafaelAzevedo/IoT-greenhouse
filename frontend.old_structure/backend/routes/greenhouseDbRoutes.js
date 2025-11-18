@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
         target_hum_air_max, irrigation_interval_minutes, irrigation_duration_seconds, target_light_intensity)
        SELECT $1, p.target_temp_min, p.target_temp_max, p.target_hum_air_min, p.target_hum_air_max,
               p.irrigation_interval_minutes, p.irrigation_duration_seconds, p.target_light_intensity
-       FROM plants p WHERE p.plant_it = $2`,
+       FROM plants p WHERE p.plant_id = $2`,
       [greenhouse.id, plant_id]
     );
 

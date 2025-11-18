@@ -35,7 +35,7 @@ INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 	 ('UTC+13',13),
 	 ('UTC+14',14);
 
-INSERT INTO public.plants (plant_it,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
+INSERT INTO public.plants (plant_id,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
 	 ('a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6'::uuid,'Tomato','Classic red tomato variety for greenhouse cultivation',18.0,28.0,80.0,120,45,600.0),
 	 ('b2c3d4e5-f6a7-48b9-c0d1-e2f3a4b5c6d7'::uuid,'Lettuce','Green leafy lettuce, ideal for salads',15.0,22.0,70.0,180,30,400.0),
 	 ('c3d4e5f6-a7b8-49c0-d1e2-f3a4b5c6d7e8'::uuid,'Cucumber','Long green cucumber for fresh consumption',20.0,30.0,85.0,90,50,550.0),
@@ -85,7 +85,7 @@ INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 
 -- Insert users
 INSERT INTO public.app_user (id,google_sub,email,display_name,timezone_id,created_at,last_login_at,phone_country_code,phone_number,password_hash) VALUES
-	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','hashed_password_1'),
+	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','d74ff0ee8da3b9806b18c877dbf29bbde50b5bd8e4dad7a3a725000feb82e8f1'),
 	 ('0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,NULL,'maria@example.com','Maria Fernandes',2,'2025-09-21 17:47:50.488204+02',NULL,'+351','987654321','hashed_password_2');
 
 -- Insert greenhouses
@@ -96,7 +96,7 @@ INSERT INTO public.greenhouse (id,owner_id,"name",last_seen,created_at) VALUES
 	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'Estufa Maria 2','2025-10-13 23:45:00+02','2025-09-21 17:50:25.871142+02');
 
 -- Insert 15 plants
-INSERT INTO public.plants (plant_it,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
+INSERT INTO public.plants (plant_id,plant_name,plant_descripion,target_temp_min,target_temp_max,target_hum_air_max,irrigation_interval_minutes,irrigation_duration_seconds,target_light_intensity) VALUES
 	 ('a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6'::uuid,'Tomato','Classic red tomato variety for greenhouse cultivation',18.0,28.0,80.0,120,45,600.0),
 	 ('b2c3d4e5-f6a7-48b9-c0d1-e2f3a4b5c6d7'::uuid,'Lettuce','Green leafy lettuce, ideal for salads',15.0,22.0,70.0,180,30,400.0),
 	 ('c3d4e5f6-a7b8-49c0-d1e2-f3a4b5c6d7e8'::uuid,'Cucumber','Long green cucumber for fresh consumption',20.0,30.0,85.0,90,50,550.0),

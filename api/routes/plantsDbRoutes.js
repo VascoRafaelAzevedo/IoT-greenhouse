@@ -49,7 +49,7 @@ router.get("/", authenticateToken,async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error("Error fetching plants:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: error.message });
   }
 });
 

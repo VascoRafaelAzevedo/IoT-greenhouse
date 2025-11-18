@@ -4,10 +4,11 @@ import jwt from 'jsonwebtoken';
 import { Pool } from 'pg';
 
 const router = express.Router();
+const useSSL = false;
 const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }, // use ssl in prod (common for cloud DBs)
+      ssl: useSSL ? { rejectUnauthorized: false } : false,
     })
   : new Pool({
       user: process.env.PGUSER || 'admin',
@@ -26,7 +27,17 @@ const generateToken = (user) =>
     secret,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
-
+router.get('/users', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, email, display_name, last_login_at FROM app_user ORDER BY id ASC'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // =========================
 // REGISTER (POST /auth/register)
@@ -53,7 +64,6 @@ router.post('/register', async (req, res) => {
        RETURNING id, email, display_name`,
       [email, displayName || email.split('@')[0], passwordHash]
     );
-
     const user = rows[0];
     const token = generateToken(user);
 
@@ -67,7 +77,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (err) {
     console.error('Register error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -104,7 +114,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Login error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error,hello' });
   }
 });
 

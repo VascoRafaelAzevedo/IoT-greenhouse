@@ -1,5 +1,6 @@
 import express from 'express';
 import { query, getClient } from '../services/postgresDbService.js';
+import { mqttService } from '../services/mqttService.js';
 import { authenticateToken } from './authMiddleware.js';
 const router = express.Router();
 const ONLINE_THRESHOLD_MINUTES = 10;
@@ -310,11 +311,15 @@ router.patch("/:id/setpoint",authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Setpoint not found for this greenhouse" });
     }
 
+    // Publish setpoint changes to MQTT
+    const updatedSetpoint = rows[0];
+    mqttService.publishSetpoint(id, updatedSetpoint);
+
     res.json({
       message: "Setpoint updated successfully",
       greenhouse_id: id,
       updatedFields: fields,
-      updatedValues: rows[0]
+      updatedValues: updatedSetpoint
     });
   } catch (error) {
     console.error("Error updating setpoint:", error);

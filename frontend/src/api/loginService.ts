@@ -63,7 +63,7 @@ export const loginService = {
       displayName,
     });
     const data = res.data;
-    if (data.token) localStorage.setItem('token', data.token);
+    if (data.token) localStorage.setItem('authToken', data.token);
     return data;
   },
 };

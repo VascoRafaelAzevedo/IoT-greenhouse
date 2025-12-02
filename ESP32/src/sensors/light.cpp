@@ -41,8 +41,8 @@
   #include <Adafruit_VCNL4010.h>
 
   // I2C configuration for VCNL4010
-  const int LIGHT_SENSOR_SDA = 22; // GPIO22
-  const int LIGHT_SENSOR_SCL = 23; // GPIO23
+  const int LIGHT_SENSOR_SDA = 22; // GPIO23
+  const int LIGHT_SENSOR_SCL = 23; // GPIO22
 
   // VCNL4010 sensor instance
   Adafruit_VCNL4010 vcnl;
@@ -52,7 +52,8 @@
    * Initialize light sensor
    */
   void initLightSensor() {
-    Wire.begin(LIGHT_SENSOR_SDA, LIGHT_SENSOR_SCL);
+    // Don't reinitialize Wire if already initialized in main.cpp
+    // Wire.begin(LIGHT_SENSOR_SDA, LIGHT_SENSOR_SCL);
     
     if (!vcnl.begin()) {
       Serial.println("⚠️  VCNL4010 sensor not found (sensor may not be connected)");

@@ -32,7 +32,7 @@
 // ============================================
 // TODO: Replace these with your actual values
 #define DEVICE_ID "esp32-greenhouse-001"
-#define GREENHOUSE_ID "00000000-0000-0000-0000-000000000000"
+#define GREENHOUSE_ID "8ce70399-99f9-46dd-bfa0-af0b7b2f6978"
 
 // ============================================
 // WiFi CONFIGURATION
@@ -71,7 +71,7 @@
 #define DEFAULT_HUM_AIR_MAX 70.0f
 
 // Light control (in arbitrary units)
-#define DEFAULT_LIGHT_INTENSITY 1000.0f
+#define DEFAULT_LIGHT_INTENSITY 1500.0f
 
 // Irrigation control
 #define DEFAULT_IRRIGATION_INTERVAL_MINUTES 1  // 

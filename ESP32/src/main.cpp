@@ -44,6 +44,7 @@ void setup() {
   
   #ifndef TEST_MODE
     // Initialize I2C (only in production mode)
+    // Wire.begin(SDA, SCL) - SDA=23, SCL=22
     Wire.begin(22, 23);
   #else
     Serial.println("⚠️  TEST MODE: Hardware I2C disabled\n");

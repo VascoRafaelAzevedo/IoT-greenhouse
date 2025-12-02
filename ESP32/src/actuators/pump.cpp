@@ -54,7 +54,7 @@
   // Relay pin configuration
   const int PUMP_RELAY_PIN = 21; // GPIO21
 
-  /**
+  /**>
    * Initialize water pump relay
    */
   void initPump() {

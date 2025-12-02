@@ -3,9 +3,76 @@ import { query, getClient } from '../services/postgresDbService.js';
 import { mqttService } from '../services/mqttService.js';
 import { authenticateToken } from './authMiddleware.js';
 const router = express.Router();
-const ONLINE_THRESHOLD_MINUTES = 10;
+const ONLINE_THRESHOLD_MINUTES = 10000000;
+async function getFullGreenhouse(id,client) {
+  const query = `
+    SELECT 
+      g.id,
+      g.name,
+      g.last_seen,
+      s.plant_name AS plant,
+      s.target_temp_min,
+      s.target_temp_max,
+      s.target_hum_air_max,
+      s.irrigation_interval_minutes,
+      s.irrigation_duration_seconds,
+      s.target_light_intensity,
+      t.temp_air AS temperature,
+      t.hum_air AS humidity,
+      t.water_level_ok AS waterLevel,
+      t.light_intensity AS lighting,
+      t.time AS last_time
+    FROM greenhouse g
+    LEFT JOIN setpoint s ON s.greenhouse_id = g.id
+    LEFT JOIN LATERAL (
+      SELECT 
+        temp_air,
+        hum_air,
+        lux,
+        light_intensity,
+        water_level_ok,
+        time
+      FROM telemetry
+      WHERE greenhouse_id = g.id
+      ORDER BY time DESC
+      LIMIT 1
+    ) t ON TRUE
+    WHERE g.id = $1;
+  `;
+
+  
+  const { rows } = await client.query(query, [id]);
+
+  if (rows.length === 0) return null;
+
+  const r = rows[0];
+  const now = new Date();
+
+  return {
+    id: r.id,
+    name: r.name,
+    plant: r.plant,
+    isOnline:
+      r.last_time &&
+      (now - new Date(r.last_time)) / 60000 < ONLINE_THRESHOLD_MINUTES,
+    temperature: r.temperature,
+    humidity: r.humidity,
+    waterLevel: r.waterLevel,
+    lighting: r.lighting,
+    lastTelemetryAt: r.last_time,
+    setpoint: {
+      target_temp_min: r.target_temp_min,
+      target_temp_max: r.target_temp_max,
+      target_hum_air_max: r.target_hum_air_max,
+      irrigation_interval_minutes: r.irrigation_interval_minutes,
+      irrigation_duration_seconds: r.irrigation_duration_seconds,
+      target_light_intensity: r.target_light_intensity
+    }
+  };
+}
+
 // Create greenhouse (copy plant parameters into setpoint)
-router.post("/", authenticateToken,async (req, res) => {
+router.post("/newGreenhouse", authenticateToken,async (req, res) => {
   const { name, plant, owner_id } = req.body;
 
   if (!name || !plant || !owner_id) {
@@ -49,7 +116,7 @@ router.post("/", authenticateToken,async (req, res) => {
         irrigation_interval_minutes,
         irrigation_duration_seconds,
         target_light_intensity,
-        plant
+        plant_name
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *;
@@ -81,14 +148,19 @@ router.post("/", authenticateToken,async (req, res) => {
     await client.query("ROLLBACK");
     console.error("Error creating greenhouse:", error);
     res.status(500).json({ error: "Internal server error" });
-  } finally {
-    client.release();
-  }
+  } 
 });
 
 // Get all greenhouses of a user
-router.get("/", authenticateToken,async (req, res) => {
+// POST /greenhouses  → returns only greenhouses owned by userId
+router.post("/", authenticateToken, async (req, res) => {
   try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId in request body" });
+    }
+
     const query = `
       SELECT 
         g.id,
@@ -114,10 +186,13 @@ router.get("/", authenticateToken,async (req, res) => {
         FROM telemetry
         ORDER BY greenhouse_id, time DESC
       ) t ON g.id = t.greenhouse_id
+      WHERE g.owner_id = $1
       ORDER BY g.created_at DESC;
     `;
+
     const client = await getClient();
-    const { rows } = await client.query(query);
+    const { rows } = await client.query(query, [userId]);
+
     const now = new Date();
 
     const result = rows.map(r => ({
@@ -137,8 +212,9 @@ router.get("/", authenticateToken,async (req, res) => {
   } catch (error) {
     console.error("Error fetching greenhouses:", error);
     res.status(500).json({ error: "Internal server error" });
-  }
+  } 
 });
+
 
 
 //Get single greenhouse + last telemetry + setpoint + last connection
@@ -267,65 +343,88 @@ router.get("/:id/history", authenticateToken,async (req, res) => {
 });
 
 //Update setpoint values
-router.patch("/:id/setpoint",authenticateToken, async (req, res) => {
+router.patch("/:id/setpoint", authenticateToken, async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
-
-  // Allowed columns to update
-  const allowedFields = [
+  const allowed = [
     "target_temp_min",
     "target_temp_max",
     "target_hum_air_max",
     "irrigation_interval_minutes",
     "irrigation_duration_seconds",
     "target_light_intensity",
-    "plant"
+    "plant_name"
   ];
 
-  // Filter only valid fields from body
-  const fields = Object.keys(updates).filter(f => allowedFields.includes(f));
+  const fields = Object.keys(updates).filter(f => allowed.includes(f));
 
   if (fields.length === 0) {
     return res.status(400).json({
-      error: `No valid fields to update. Allowed: ${allowedFields.join(", ")}`
+      error: `No valid fields. Allowed: ${allowed.join(", ")}`
     });
   }
 
   try {
-    // Dynamically build the SET clause
-    const setClauses = fields.map(
-      (field, idx) => `${field} = $${idx + 2}` // +2 because $1 is the greenhouse_id
-    );
+    const set = fields.map((f, i) => `${f} = $${i + 2}`).join(", ");
     const values = fields.map(f => updates[f]);
 
     const query = `
       UPDATE setpoint
-      SET ${setClauses.join(", ")}, changed_at = NOW()
+      SET ${set}, changed_at = NOW()
       WHERE greenhouse_id = $1
       RETURNING *;
     `;
+
     const client = await getClient();
     const { rows } = await client.query(query, [id, ...values]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ error: "Setpoint not found for this greenhouse" });
+      return res.status(404).json({ error: "Setpoint not found" });
     }
 
-    // Publish setpoint changes to MQTT
-    const updatedSetpoint = rows[0];
-    mqttService.publishSetpoint(id, updatedSetpoint);
+    // Send setpoint to MQTT
+    //mqttService.publishSetpoint(id, rows[0]);
 
-    res.json({
-      message: "Setpoint updated successfully",
-      greenhouse_id: id,
-      updatedFields: fields,
-      updatedValues: updatedSetpoint
-    });
+    // Return full greenhouse object
+    const updated = await getFullGreenhouse(id,client);
+    res.json(updated);
   } catch (error) {
     console.error("Error updating setpoint:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+router.patch("/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string") {
+    return res.status(400).json({ error: "Invalid or missing 'name'" });
+  }
+
+  try {
+    const client = await getClient();
+
+    // Update only the name
+    await client.query(
+      `UPDATE greenhouse SET name = $1 WHERE id = $2 AND owner_id = $3`,
+      [name, id, req.user.id]
+    );
+
+    // Return full greenhouse object
+    const updated = await getFullGreenhouse(id,client);
+    if (!updated) {
+      return res.status(404).json({ error: "Greenhouse not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating greenhouse:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 // Delete greenhouse (cascade removes setpoint, telemetry, etc.)
 router.delete("/:id", authenticateToken,async (req, res) => {

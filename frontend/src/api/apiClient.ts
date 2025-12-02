@@ -11,8 +11,7 @@ export const apiClient = axios.create({
 // Attach token dynamically for every request
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    console.log(token) 
+    const token = localStorage.getItem('authToken');
     if (token) {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;

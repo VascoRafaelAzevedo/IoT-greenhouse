@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { GreenhouseDetail } from './components/GreenhouseDetail';
 import { Settings } from './components/Settings';
@@ -34,25 +34,36 @@ export default function App() {
   // Login state
   const [isLoggedIn, setIsLoggedIn] = useState(loginService.isAuthenticated());
 
-  const handleLogin = async ({ username, password }: { username: string; password: string }) => {
-    try {
-      const { token } = await loginService.login(username, password);
-      if (token) {
-        loginService.attachAuthHeader();
-        setIsLoggedIn(true);
-        loadData();
-        loadSettings();
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Login failed');
-    }
-  };
+  // Ref to prevent overlapping requests
+  const isLoadingRef = useRef(false);
 
-  const handleLogout = () => {
-    loginService.logout();
-    setIsLoggedIn(false);
-    setGreenhouses([]);
-    setPlants([]);
+  // Ref to track previous greenhouses for alerts
+  const prevGreenhousesRef = useRef<Greenhouse[]>([]);
+
+  // Load data with in-flight guard
+  const loadData = async (silent = false) => {
+    if (isLoadingRef.current) return; // skip if already fetching
+    isLoadingRef.current = true;
+
+    try {
+      if (!silent) setLoading(true);
+      setError(null);
+
+      const [ghData, plantData] = await Promise.all([
+        dataService.getGreenhouses(),
+        dataService.getPlants(),
+      ]);
+
+      setGreenhouses(ghData);
+      setPlants(plantData);
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      console.error('Data load error:', err);
+      setError('Failed to load data. Please check your connection or try again.');
+    } finally {
+      if (!silent) setLoading(false);
+      isLoadingRef.current = false;
+    }
   };
 
   // Load settings
@@ -65,36 +76,54 @@ export default function App() {
     }
   };
 
-  // Load initial data
-  const loadData = async (silent = false) => {
+  // Login / Register handlers
+  const handleLogin = async ({ username, password }: { username: string; password: string }) => {
     try {
-      if (!silent) setLoading(true);
-      setError(null);
-      const [ghData, plantData] = await Promise.all([
-        dataService.getGreenhouses(),
-        dataService.getPlants(),
-      ]);
-      setGreenhouses(ghData);
-      setPlants(plantData);
-      setLastUpdated(new Date());
+      const { token } = await loginService.login(username, password);
+      if (token) {
+        loginService.attachAuthHeader();
+        setIsLoggedIn(true); // triggers data/settings load
+      }
     } catch (err: any) {
-      console.error('Data load error:', err);
-      setError('Failed to load data. Please check your connection or try again.');
-    } finally {
-      if (!silent) setLoading(false);
+      toast.error(err.message || 'Login failed');
     }
   };
 
-  // Auto-refresh every 15 seconds (only when logged in)
+  const handleRegister = async ({ username, password, name }: { username: string; password: string; name: string }) => {
+    try {
+      const { token } = await loginService.register(username, password, name);
+      if (token) {
+        loginService.attachAuthHeader();
+        setIsLoggedIn(true); // triggers data/settings load
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Registration failed');
+    }
+  };
+
+  const handleLogout = () => {
+    loginService.logout();
+    setIsLoggedIn(false);
+    setGreenhouses([]);
+    setPlants([]);
+  };
+
+  // Auto-refresh every 15 minutes
   useEffect(() => {
     if (!isLoggedIn) return;
-    const interval = setInterval(() => {
-      loadData(true);
-    }, 1500000);
+    const interval = setInterval(() => loadData(true), 900000); // 900000ms = 15min
     return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  // Apply dark mode
+  // Initial load on login
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    loginService.attachAuthHeader();
+    loadData();
+    loadSettings();
+  }, [isLoggedIn]);
+
+  // Dark mode
   useEffect(() => {
     if (appSettings?.display.darkMode) {
       document.documentElement.classList.add('dark');
@@ -103,9 +132,11 @@ export default function App() {
     }
   }, [appSettings?.display.darkMode]);
 
-  // 🌡️ Alerts based on plant optimal values
+  // Alerts based on plant optimal values, only if greenhouse data changed
   useEffect(() => {
     if (!isLoggedIn) return;
+    const prev = prevGreenhousesRef.current;
+    if (JSON.stringify(prev) === JSON.stringify(greenhouses)) return;
 
     greenhouses.forEach((greenhouse) => {
       const plant = plants.find((p) => p.name === greenhouse.plant);
@@ -113,7 +144,6 @@ export default function App() {
 
       const alerts: string[] = [];
 
-      // Compare temperature
       if (
         greenhouse.temperature < plant.optimalTemperature.min ||
         greenhouse.temperature > plant.optimalTemperature.max
@@ -123,23 +153,21 @@ export default function App() {
         );
       }
 
-      // Compare humidity (air)
       if (
-        greenhouse.humidity < plant.optimalHumidity-5 ||
-        greenhouse.humidity > plant.optimalHumidity+5
+        greenhouse.humidity < plant.optimalHumidity - 5 ||
+        greenhouse.humidity > plant.optimalHumidity + 5
       ) {
         alerts.push(
-          `Humidity ${greenhouse.humidity}% (optimal: ${plant.optimalHumidity-5}-${plant.optimalHumidity+5}%)`
+          `Humidity ${greenhouse.humidity}% (optimal: ${plant.optimalHumidity - 5}-${plant.optimalHumidity + 5}%)`
         );
       }
 
-      // Compare lighting (lux or %)
       if (
-        greenhouse.lighting < plant.optimalLighting-10 ||
-        greenhouse.lighting > plant.optimalLighting+10
+        greenhouse.lighting < plant.optimalLighting - 10 ||
+        greenhouse.lighting > plant.optimalLighting + 10
       ) {
         alerts.push(
-          `Lighting ${greenhouse.lighting} (optimal: ${plant.optimalLighting-10}-${plant.optimalLighting+10})`
+          `Lighting ${greenhouse.lighting} (optimal: ${plant.optimalLighting - 10}-${plant.optimalLighting + 10})`
         );
       }
 
@@ -151,10 +179,11 @@ export default function App() {
         });
       }
     });
+
+    prevGreenhousesRef.current = greenhouses;
   }, [greenhouses, plants, isLoggedIn]);
 
   // CRUD Actions
-
   const updateGreenhouse = async (id: string, updates: Partial<Greenhouse>) => {
     setGlobalLoading('Updating greenhouse...');
     try {
@@ -184,7 +213,6 @@ export default function App() {
   const selectedGH = greenhouses.find((g) => g.id === selectedGreenhouseId);
 
   const renderContent = () => {
-    //if (loading) return <Loading />;
     if (error) return <ErrorState message={error} onRetry={loadData} />;
 
     switch (currentView) {
@@ -229,35 +257,14 @@ export default function App() {
     { view: 'settings' as View, icon: SettingsIcon, label: 'Settings' },
   ];
 
-  // 🟢 Show Login first if not authenticated
-if (!isLoggedIn) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 transition-colors">
-      <Auth
-        onLogin={async ({ username, password }) => {
-          const { token } = await loginService.login(username, password);
-          if (token) {
-            loginService.attachAuthHeader();
-            setIsLoggedIn(true);
-
-            await loadData();
-            await loadSettings();
-          }
-        }}
-        onRegister={async ({ username, password, name }) => {
-          const { token } = await loginService.register(username, password, name);
-          if (token) {
-            loginService.attachAuthHeader();
-            setIsLoggedIn(true);
-
-            await loadData();
-            await loadSettings();
-          }
-        }}
-      />
-    </div>
-  );
-}
+  // Show Login first if not authenticated
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 transition-colors">
+        <Auth onLogin={handleLogin} onRegister={handleRegister} />
+      </div>
+    );
+  }
 
   // Main App after login
   return (
@@ -293,7 +300,6 @@ if (!isLoggedIn) {
                 </Button>
               ))}
 
-              {/* Logout button */}
               <Button
                 variant="ghost"
                 className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800"
@@ -338,7 +344,6 @@ if (!isLoggedIn) {
                 </Button>
               ))}
 
-              {/* Logout (mobile) */}
               <Button
                 variant="ghost"
                 className="w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800"
@@ -359,6 +364,3 @@ if (!isLoggedIn) {
     </div>
   );
 }
-
-
-

@@ -7,7 +7,7 @@ import { Eye, EyeOff, Leaf } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (credentials: { username: string; password: string }) => Promise<void> | void;
-  onRegister: (credentials: { username: string; password: string; name?: string }) => Promise<void> | void;
+  onRegister: (credentials: { username: string; password: string; name: string }) => Promise<void> | void;
 }
 
 export function Auth({ onLogin, onRegister }: AuthProps) {

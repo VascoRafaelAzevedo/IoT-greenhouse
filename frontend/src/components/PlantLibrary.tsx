@@ -32,7 +32,7 @@ export function PlantLibrary({ plants, onBack }: PlantLibraryProps) {
         </Button>
         <div>
           <h2 className="text-green-800 dark:text-green-200">Plant Library</h2>
-          <p className="text-green-600 dark:text-green-400">
+          <p className="text-[#563635] dark:text-green-400">
             Quick reference for your greenhouse plants
           </p>
         </div>

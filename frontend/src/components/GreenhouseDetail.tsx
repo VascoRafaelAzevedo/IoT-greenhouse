@@ -15,7 +15,6 @@ import {
   Thermometer,
   Droplets,
   Sun,
-  Beaker,
   Wifi,
   WifiOff,
   Settings,
@@ -50,13 +49,16 @@ export function GreenhouseDetail({
 }: GreenhouseDetailProps) {
   const [greenhouse, setGreenhouse] = useState(initialGreenhouse);
   const [editingName, setEditingName] = useState(false);
+
+  // For animation (smooth slide down)
+  const [showNameInput, setShowNameInput] = useState(false);
+
   const [newName, setNewName] = useState(initialGreenhouse.name || initialGreenhouse.id);
   const [selectedParameter, setSelectedParameter] = useState<ParameterType | null>(null);
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
   const [setpoints, setSetpoints] = useState(initialGreenhouse.setpoint);
   const [historyData, setHistoryData] = useState<{ time: string; value: number }[] | null>(null);
 
-  // Load live data from backend
   useEffect(() => {
     (async () => {
       try {
@@ -79,9 +81,10 @@ export function GreenhouseDetail({
       icon: Thermometer,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      optimal: setpoints?.target_temp_min && setpoints?.target_temp_max
-        ? { min: setpoints.target_temp_min, max: setpoints.target_temp_max }
-        : undefined,
+      optimal:
+        setpoints?.target_temp_min && setpoints?.target_temp_max
+          ? { min: setpoints.target_temp_min, max: setpoints.target_temp_max }
+          : undefined,
     },
     {
       type: 'humidity',
@@ -126,32 +129,44 @@ export function GreenhouseDetail({
     setSetpoints(prev => ({ ...prev, [field]: value }));
   };
 
-  const applyChanges = async () => {
-    try {
-      if(newName&&newName!==greenhouse.name){
-        const updates = {
-          name: newName,
-        };
-        const updated = await dataService.updateGreenhouse(greenhouse.id, updates);
-        setGreenhouse(updated);
-        onUpdate(updates);
-        setControlPanelOpen(false);
-        setEditingName(false);
-      }else if (setpoints){
-        const updates = setpoints
-        const updated = await dataService.updateGreenhouseSetpoint(greenhouse.id, updates);
-        setGreenhouse(updated);
-        onUpdate({
-          setpoint: updates,
-        });
-        setControlPanelOpen(false);
-      }
-      console.log(setpoints)
-      
-    } catch (err) {
-      console.error('Failed to apply changes:', err);
-    }
-  };
+  const saveName = async () => {
+  try {
+    if (!newName || newName === greenhouse.name) return;
+
+    const updated = await dataService.updateGreenhouse(greenhouse.id, {
+      name: newName,
+    });
+
+    setGreenhouse(updated);
+    onUpdate(updated);
+    setShowNameInput(false);
+    setEditingName(false);
+
+  } catch (err) {
+    console.error("Failed to update name:", err);
+  }
+};
+
+const applySetpoints = async () => {
+  try {
+    const updated = await dataService.updateGreenhouseSetpoint(
+      greenhouse.id,
+      setpoints
+    );
+
+    setGreenhouse(updated);
+    onUpdate(updated);
+
+    // clean slider state
+    setSetpoints(updated.setpoint);
+
+    setControlPanelOpen(false);
+
+  } catch (err) {
+    console.error("Failed to update setpoints:", err);
+  }
+};
+
 
   const resetControls = () => {
     setSetpoints(greenhouse.setpoint);
@@ -167,25 +182,47 @@ export function GreenhouseDetail({
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
+
           <div>
             <div className="flex items-center space-x-3">
-              {editingName ? (
-                <Input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  className="w-56 border-green-300 focus:border-green-500"
-                />
-              ) : (
-                <h2 className="text-green-800">{greenhouse.name || greenhouse.id}</h2>
-              )}
+              {/* NAME FIELD WITH SMOOTH ANIMATION */}
+              <div className="relative overflow-hidden">
+                <div
+                  className={`transition-all duration-200 ${
+                    showNameInput ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 h-0'
+                  }`}
+                >
+                  {editingName && (
+                    <Input
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      className="w-56 border-green-300 focus:border-green-500"
+                    />
+                  )}
+                </div>
+
+                {!editingName && (
+                  <h2 className="text-green-800 transition-all duration-200">
+                    {greenhouse.name || greenhouse.id}
+                  </h2>
+                )}
+              </div>
+
               <Button
                 variant="outline"
                 size="sm"
                 className="text-green-700 border-green-200 hover:bg-green-50"
-                onClick={() => setEditingName(!editingName)}
+                onClick={async () => {
+                  if (editingName) {
+                    await saveName();
+                  }
+                  setEditingName(!editingName);
+                  setShowNameInput(!editingName);
+                }}
               >
                 {editingName ? 'Done' : 'Edit'}
               </Button>
+
               <Badge
                 variant={greenhouse.isOnline ? 'default' : 'destructive'}
                 className={greenhouse.isOnline ? 'bg-green-100 text-green-800' : ''}
@@ -203,9 +240,11 @@ export function GreenhouseDetail({
                 )}
               </Badge>
             </div>
-            <p className="text-green-600">Growing {greenhouse.plant}</p>
+
+            <p className="text-[#563635]">Growing {greenhouse.plant}</p>
           </div>
         </div>
+
         <Button
           onClick={() => setControlPanelOpen(!controlPanelOpen)}
           variant="outline"
@@ -216,7 +255,7 @@ export function GreenhouseDetail({
         </Button>
       </div>
 
-      {/* Manual Control Panel for Setpoints */}
+      {/* CONTROL PANEL (unchanged except for logic updates) */}
       {controlPanelOpen && (
         <Card className="border-green-200">
           <CardHeader>
@@ -225,6 +264,7 @@ export function GreenhouseDetail({
               Manual Setpoint Control
             </CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-6">
             {/* Temperature */}
             <div className="grid grid-cols-2 gap-4">
@@ -239,6 +279,7 @@ export function GreenhouseDetail({
                 />
                 <p className="text-sm text-gray-600 mt-1">{setpoints.target_temp_min}°C</p>
               </div>
+
               <div>
                 <Label>Temperature Max (°C)</Label>
                 <Slider
@@ -276,18 +317,25 @@ export function GreenhouseDetail({
                   max={300}
                   step={10}
                 />
-                <p className="text-sm text-gray-600 mt-1">{setpoints.irrigation_interval_minutes} min</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {setpoints.irrigation_interval_minutes} min
+                </p>
               </div>
+
               <div>
                 <Label>Irrigation Duration (s)</Label>
                 <Slider
                   value={[setpoints.irrigation_duration_seconds]}
-                  onValueChange={([v]) => handleSetpointChange('irrigation_duration_seconds', v)}
+                  onValueChange={([v]) =>
+                    handleSetpointChange('irrigation_duration_seconds', v)
+                  }
                   min={5}
                   max={120}
                   step={5}
                 />
-                <p className="text-sm text-gray-600 mt-1">{setpoints.irrigation_duration_seconds} sec</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {setpoints.irrigation_duration_seconds} sec
+                </p>
               </div>
             </div>
 
@@ -301,17 +349,32 @@ export function GreenhouseDetail({
                 max={1000}
                 step={10}
               />
-              <p className="text-sm text-gray-600 mt-1">{setpoints.target_light_intensity} lux</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {setpoints.target_light_intensity} lux
+              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-              <Button onClick={applyChanges} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+              <Button
+                onClick={applySetpoints}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              >
                 Apply Changes
               </Button>
-              <Button variant="outline" onClick={resetControls} className="flex-1 text-green-700 border-green-200 hover:bg-green-50">
+
+              <Button
+                variant="outline"
+                onClick={resetControls}
+                className="flex-1 text-green-700 border-green-200 hover:bg-green-50"
+              >
                 Reset
               </Button>
-              <Button variant="ghost" onClick={() => setControlPanelOpen(false)} className="flex-1 text-gray-600 hover:bg-gray-50">
+
+              <Button
+                variant="ghost"
+                onClick={() => setControlPanelOpen(false)}
+                className="flex-1 text-gray-600 hover:bg-gray-50"
+              >
                 Cancel
               </Button>
             </div>
@@ -319,11 +382,12 @@ export function GreenhouseDetail({
         </Card>
       )}
 
-      {/* Existing parameter cards remain unchanged */}
+      {/* PARAMETER CARDS (unchanged) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {parameters.map(param => {
           const isInRange = isParameterInRange(param);
           const Icon = param.icon;
+
           return (
             <Card
               key={param.type}
@@ -335,22 +399,31 @@ export function GreenhouseDetail({
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-full ${param.bgColor} flex items-center justify-center`}>
+                    <div
+                      className={`w-10 h-10 rounded-full ${param.bgColor} flex items-center justify-center`}
+                    >
                       <Icon className={`w-5 h-5 ${param.color}`} />
                     </div>
+
                     <div>
-                      <CardTitle className="text-base text-gray-900">{param.title}</CardTitle>
+                      <CardTitle className="text-base text-gray-900">
+                        {param.title}
+                      </CardTitle>
+
                       <p className="text-2xl font-semibold text-gray-900 mt-1">
-                        {param.value}{param.unit}
+                        {param.value}
+                        {param.unit}
                       </p>
                     </div>
                   </div>
+
                   <div className="flex flex-col items-end space-y-2">
                     <TrendingUp className="w-4 h-4 text-gray-400" />
                     {!isInRange && <AlertTriangle className="w-4 h-4 text-red-500" />}
                   </div>
                 </div>
               </CardHeader>
+
               <CardContent>
                 {param.optimal && (
                   <>
@@ -358,9 +431,11 @@ export function GreenhouseDetail({
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Optimal Range</span>
                         <span className="text-gray-900">
-                          {param.optimal.min}-{param.optimal.max}{param.unit}
+                          {param.optimal.min}-{param.optimal.max}
+                          {param.unit}
                         </span>
                       </div>
+
                       <Progress
                         value={Math.min(
                           100,
@@ -374,6 +449,7 @@ export function GreenhouseDetail({
                         className="h-2"
                       />
                     </div>
+
                     <div className="mt-3 pt-3 border-t border-gray-100">
                       <Badge
                         variant={isInRange ? 'default' : 'destructive'}
@@ -397,7 +473,7 @@ export function GreenhouseDetail({
         })}
       </div>
 
-      {/* History Dialog */}
+      {/* HISTORY DIALOG */}
       {selectedParameter && historyData && (
         <ParameterDialog
           parameter={parameters.find(p => p.type === selectedParameter)!}

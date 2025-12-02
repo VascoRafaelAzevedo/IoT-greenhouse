@@ -27,7 +27,15 @@ interface ParameterDialogProps {
 
 export function ParameterDialog({ parameter, data, onClose }: ParameterDialogProps) {
   const Icon = parameter.icon;
-  
+  const localData = data.map((d) => ({
+  ...d,
+  time: new Date(d.time).toLocaleString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: 'short'
+  })
+}));
   const getColorForValue = (value: number) => {
     if (!parameter.optimal) return '#10b981'; // green
     
@@ -127,7 +135,7 @@ export function ParameterDialog({ parameter, data, onClose }: ParameterDialogPro
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data}>
+                  <LineChart data={localData}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
                       dataKey="time" 
@@ -188,7 +196,7 @@ export function ParameterDialog({ parameter, data, onClose }: ParameterDialogPro
             <CardContent>
               <div className="max-h-40 overflow-y-auto">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                  {data.slice(-12).reverse().map((reading, index) => {
+                  {localData.slice(-12).reverse().map((reading, index) => {
                     const isInRange = parameter.optimal 
                       ? reading.value >= parameter.optimal.min && reading.value <= parameter.optimal.max
                       : true;

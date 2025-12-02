@@ -43,7 +43,7 @@ export function Dashboard({ greenhouses, onSelectGreenhouse, onDeleteGreenhouse 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-green-800 mb-1">Your Greenhouses</h2>
-          <p className="text-green-600">Monitor and manage your growing spaces</p>
+          <p className="text-[#563635]">Monitor and manage your growing spaces</p>
           {lastUpdated && (
           <p className="text-xs text-gray-500 mt-1">
             Last updated {formatTimeAgo(lastUpdated)}

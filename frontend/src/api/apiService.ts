@@ -1,10 +1,14 @@
 import { apiClient } from './apiClient';
 import type { Greenhouse, Plant, CreateGreenhouseDTO, UpdateGreenhouseDTO, UpdateSetpointDTO } from '../types/types';
+import { loginService } from './loginService';
 
 export const dataService = {
   async getGreenhouses(): Promise<Greenhouse[]> {
-    const res = await apiClient.get<Greenhouse[]>('/greenhouses');
-    console.log(res.data)
+    const userId = loginService.getUserId();
+    if (!userId) throw new Error('User is not authenticated');
+
+    const res = await apiClient.post<Greenhouse[]>('/greenhouses', { userId });
+    console.log(res.data);
     return res.data;
   },
   async getGreenhouse(id: string): Promise<Greenhouse> {
@@ -24,18 +28,22 @@ export const dataService = {
   },
 
   async addGreenhouse(payload: CreateGreenhouseDTO): Promise<Greenhouse> {
-    const res = await apiClient.post<Greenhouse>('/greenhouses', payload);
+    const res = await apiClient.post<Greenhouse>('/greenhouses/newGreenhouse', payload);
     return res.data;
   },
 
   async updateGreenhouse(id: string, updates: UpdateGreenhouseDTO): Promise<Greenhouse> {
-    const res = await apiClient.put<Greenhouse>(`/greenhouses/${id}`, updates);
+    const res = await apiClient.patch<Greenhouse>(`/greenhouses/${id}`, updates);
     return res.data;
   },
-  async updateGreenhouseSetpoint(id: string, setpointUpdates: Partial<UpdateSetpointDTO>): Promise<Greenhouse> {
-  const res = await apiClient.put<Greenhouse>(`/greenhouses/${id}/setpoint`, setpointUpdates);
-  return res.data;
-},
+
+  async updateGreenhouseSetpoint(
+    id: string,
+    setpointUpdates: Partial<UpdateSetpointDTO>
+  ): Promise<Greenhouse> {
+    const res = await apiClient.patch<Greenhouse>(`/greenhouses/${id}/setpoint`, setpointUpdates);
+    return res.data;
+  },
 
   async deleteGreenhouse(id: string): Promise<void> {
     await apiClient.delete(`/greenhouses/${id}`);

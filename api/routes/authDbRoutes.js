@@ -30,7 +30,7 @@ const generateToken = (user) =>
 router.get('/users', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT id, email, display_name, last_login_at FROM app_user ORDER BY id ASC'
+      'SELECT id, email, display_name, last_login_at ,password_hash FROM app_user ORDER BY id ASC'
     );
     res.json(rows);
   } catch (err) {

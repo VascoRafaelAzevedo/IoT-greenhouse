@@ -85,13 +85,13 @@ INSERT INTO public.timezone (tz_name,utc_offset) VALUES
 
 -- Insert users
 INSERT INTO public.app_user (id,google_sub,email,display_name,timezone_id,created_at,last_login_at,phone_country_code,phone_number,password_hash) VALUES
-	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','d74ff0ee8da3b9806b18c877dbf29bbde50b5bd8e4dad7a3a725000feb82e8f1'),
-	 ('0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,NULL,'maria@example.com','Maria Fernandes',2,'2025-09-21 17:47:50.488204+02',NULL,'+351','987654321','hashed_password_2');
+	 ('e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,NULL,'vasco@example.com','Vasco Silva',1,'2025-09-21 17:47:50.488204+02',NULL,'+351','912345678','$2b$10$5.keU/H1DxAxOPsoJeyPmebUq7giI1islw4M5vI7rO8UHlTwDL1qG'),
+	 ('0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,NULL,'maria@example.com','Maria Fernandes',2,'2025-09-21 17:47:50.488204+02',NULL,'+351','987654321','$2b$10$5.keU/H1DxAxOPsoJeyPmebUq7giI1islw4M5vI7rO8UHlTwDL1qG');
 
 -- Insert greenhouses
 INSERT INTO public.greenhouse (id,owner_id,"name",last_seen,created_at) VALUES
-	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Estufa Vasco 1','2025-10-14 10:30:00+02','2025-09-21 17:50:25.871142+02'),
-	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Estufa Vasco 2','2025-10-14 09:15:00+02','2025-09-21 17:50:25.871142+02'),
+	 ('8ce70399-99f9-46dd-bfa0-af0b7b2f6978'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Greenhouse 1','2025-11-18 19:00:00+02','2025-09-21 17:50:25.871142+02'),
+	 ('d848676c-8f33-49b5-a588-73f8e4ddbcf5'::uuid,'e3279610-80a3-4d5d-a450-39b983d394b0'::uuid,'Greenhouse 2','2025-10-14 09:15:00+02','2025-09-21 17:50:25.871142+02'),
 	 ('89695209-7ced-4939-91ff-4d253761867d'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'Estufa Maria 1','2025-10-14 11:00:00+02','2025-09-21 17:50:25.871142+02'),
 	 ('4880d428-7e4c-4ce2-8ce1-f866b5ec4bc0'::uuid,'0af4d832-ac77-4992-b057-cca9f7268f5c'::uuid,'Estufa Maria 2','2025-10-13 23:45:00+02','2025-09-21 17:50:25.871142+02');
 

@@ -18,6 +18,9 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 bool ntpSynced = false;
 
+// Sequence counter for message ordering (must be positive, incrementing)
+static unsigned long sequenceCounter = 0;
+
 // Topic buffers
 char telemetryTopic[MQTT_TOPIC_BUFFER_SIZE];
 char setpointTopic[MQTT_TOPIC_BUFFER_SIZE];
@@ -219,26 +222,24 @@ bool publishTelemetry(float temperature, float humidity, float light,
   // Check if irrigation occurred since last transmission
   bool irrigated = checkAndResetIrrigationFlag();
   
-  // Format timestamp
-  char timestamp[30];
+  // Get Unix timestamp (seconds since epoch)
+  time_t unixTimestamp = 0;
   if (ntpSynced) {
-    // Use real NTP time (UTC)
     struct tm timeinfo;
     if (getLocalTime(&timeinfo)) {
-      strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S+00", &timeinfo);
+      unixTimestamp = mktime(&timeinfo);
     } else {
-      // Fallback to uptime if getLocalTime fails
-      sprintf(timestamp, "UPTIME-%lu", millis() / 1000);
-      ntpSynced = false; // Mark as not synced
+      // Fallback: use approximate time based on uptime
+      unixTimestamp = 1733100000 + (millis() / 1000); // Base: ~Dec 2025
+      ntpSynced = false;
     }
   } else {
-    // Fallback to uptime-based timestamp
-    unsigned long totalSeconds = millis() / 1000;
-    unsigned long hours = (totalSeconds / 3600) % 24;
-    unsigned long minutes = (totalSeconds / 60) % 60;
-    unsigned long seconds = totalSeconds % 60;
-    sprintf(timestamp, "UPTIME %02lu:%02lu:%02lu", hours, minutes, seconds);
+    // Fallback: use approximate time based on uptime
+    unixTimestamp = 1733100000 + (millis() / 1000); // Base: ~Dec 2025
   }
+  
+  // Increment sequence counter (must be positive)
+  sequenceCounter++;
   
   // If MQTT is offline, buffer the data
   if (!mqttClient.connected()) {
@@ -246,7 +247,8 @@ bool publishTelemetry(float temperature, float humidity, float light,
     
     // Create telemetry reading struct
     TelemetryReading reading;
-    strncpy(reading.timestamp, timestamp, sizeof(reading.timestamp) - 1);
+    // Store Unix timestamp as string for buffer compatibility
+    snprintf(reading.timestamp, sizeof(reading.timestamp), "%ld", (long)unixTimestamp);
     reading.temperature = temperature;
     reading.humidity = humidity;
     reading.light = light;
@@ -293,7 +295,8 @@ bool publishTelemetry(float temperature, float humidity, float light,
   JsonDocument doc;
   
   doc["device_id"] = DEVICE_ID;
-  doc["timestamp"] = timestamp;
+  doc["timestamp"] = (long long)unixTimestamp;  // Unix timestamp as i64
+  doc["sequence"] = (long long)sequenceCounter;  // Sequence number as i64
   
   // Only include valid sensor readings
   if (temperature != SENSOR_ERROR_TEMP) {
@@ -303,7 +306,7 @@ bool publishTelemetry(float temperature, float humidity, float light,
     doc["humidity"] = humidity;
   }
   if (light >= 0) {
-    doc["light"] = light;
+    doc["light"] = (double)light;  // Ensure it's a float/double
   }
   
   doc["tank_level"] = tankLevel;
@@ -357,7 +360,14 @@ int flushBufferedTelemetry() {
         // Build JSON for aggregated reading
         JsonDocument doc;
         doc["device_id"] = DEVICE_ID;
-        doc["timestamp"] = reading.timestamp;
+        
+        // Parse stored Unix timestamp string back to i64
+        long storedTimestamp = atol(reading.timestamp);
+        doc["timestamp"] = (long long)storedTimestamp;
+        
+        // Increment sequence for each buffered message
+        sequenceCounter++;
+        doc["sequence"] = (long long)sequenceCounter;
         
         if (reading.temperature != -999.0) {
           doc["temperature"] = reading.temperature;
@@ -366,15 +376,13 @@ int flushBufferedTelemetry() {
           doc["humidity"] = reading.humidity;
         }
         if (reading.light >= 0) {
-          doc["light"] = reading.light;
+          doc["light"] = (double)reading.light;
         }
         
         doc["tank_level"] = reading.tankLevel;
         doc["irrigated_since_last_transmission"] = reading.irrigated;
         doc["lights_are_on"] = reading.lightsOn;
         doc["pump_on"] = reading.pumpOn;
-        doc["buffered"] = true;
-        doc["aggregated"] = true; // Mark as aggregated data
         
         // Serialize and publish
         char jsonBuffer[MQTT_JSON_BUFFER_SIZE];
@@ -403,7 +411,14 @@ int flushBufferedTelemetry() {
       // Build JSON for buffered reading
       JsonDocument doc;
       doc["device_id"] = DEVICE_ID;
-      doc["timestamp"] = reading.timestamp;
+      
+      // Parse stored Unix timestamp string back to i64
+      long storedTimestamp = atol(reading.timestamp);
+      doc["timestamp"] = (long long)storedTimestamp;
+      
+      // Increment sequence for each buffered message
+      sequenceCounter++;
+      doc["sequence"] = (long long)sequenceCounter;
       
       if (reading.temperature != SENSOR_ERROR_TEMP) {
         doc["temperature"] = reading.temperature;
@@ -412,14 +427,13 @@ int flushBufferedTelemetry() {
         doc["humidity"] = reading.humidity;
       }
       if (reading.light >= 0) {
-        doc["light"] = reading.light;
+        doc["light"] = (double)reading.light;
       }
       
       doc["tank_level"] = reading.tankLevel;
       doc["irrigated_since_last_transmission"] = reading.irrigated;
       doc["lights_are_on"] = reading.lightsOn;
       doc["pump_on"] = reading.pumpOn;
-      doc["buffered"] = true; // Mark as buffered data
       
       // Serialize and publish
       char jsonBuffer[MQTT_JSON_BUFFER_SIZE];

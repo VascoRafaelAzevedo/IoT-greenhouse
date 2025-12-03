@@ -31,7 +31,7 @@
 // DEVICE IDENTIFICATION
 // ============================================
 // TODO: Replace these with your actual values
-#define DEVICE_ID "esp32-greenhouse-001"
+#define DEVICE_ID "8ce70399-99f9-46dd-bfa0-af0b7b2f6978"  // Substitui pelo UUID real
 #define GREENHOUSE_ID "8ce70399-99f9-46dd-bfa0-af0b7b2f6978"
 
 // ============================================

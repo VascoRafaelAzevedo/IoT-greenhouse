@@ -29,7 +29,7 @@ void processWebServer();
 
 // Timing intervals
 unsigned long lastCycleTime = 0;
-const unsigned long CYCLE_INTERVAL = 1000; // Master cycle interval - change this to 60000 for production (1 minute)
+const unsigned long CYCLE_INTERVAL = 60000; // Master cycle interval - change this to 60000 for production (1 minute)
 
 void setup() {
   Serial.begin(115200);
